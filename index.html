@@ -10,7 +10,6 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         
-        /* WADAH UTAMA: Flexbox murni agar tengah otomatis tanpa merusak koordinat mesin */
         #scanner-container {
             display: flex;
             justify-content: center;
@@ -22,16 +21,13 @@
             overflow: hidden;
         }
 
-        /* Biarkan html5-qrcode mengatur videonya sendiri secara natural */
         #videoFeed {
             width: 100%;
-            max-width: 640px; /* Batasi lebar agar tidak melebar berantakan */
+            max-width: 640px;
             text-align: center;
         }
 
-        /* Sembunyikan elemen dashboard bawaan library */
         #videoFeed__dashboard { display: none !important; }
-
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
     </style>
 </head>
@@ -40,11 +36,11 @@
     <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 py-4 px-8 flex justify-between items-center z-10 shadow-lg">
         <div class="flex items-center gap-4">
             <div class="bg-emerald-500 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                <i class="fa-solid fa-graduation-cap text-2xl text-white"></i>
+                <i class="fa-solid fa-bolt text-2xl text-white"></i>
             </div>
             <div>
                 <h1 class="text-2xl font-extrabold tracking-tight text-white">SMART TEACHER</h1>
-                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (Sync Fix)</p>
+                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (Turbo Mode)</p>
             </div>
         </div>
         <div class="text-right hidden md:block">
@@ -136,19 +132,24 @@
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
                 ]);
-                aiStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-check"></i> Siap</span>`;
+                aiStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-bolt"></i> Turbo Siap</span>`;
 
                 const html5QrCode = new Html5Qrcode("videoFeed");
                 
-                // Gunakan rasio aspek natural, jangan dipaksa
+                // OPTIMASI 1: Hanya cari QR Code murni, jangan cari barcode. FPS dinaikkan ke 15.
                 await html5QrCode.start(
                     { facingMode: "user" },
-                    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.333334 },
+                    { 
+                        fps: 15, 
+                        qrbox: { width: 250, height: 250 }, 
+                        aspectRatio: 1.333334,
+                        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
+                    },
                     (decodedText) => {
                         if (!window.lastScanned || window.lastScanned !== decodedText) {
                             window.lastScanned = decodedText;
                             tambahLogKehadiran(decodedText, "QR");
-                            setTimeout(() => { window.lastScanned = null; }, 3000);
+                            setTimeout(() => { window.lastScanned = null; }, 3000); // Jeda 3 detik antar scan
                         }
                     },
                     (errorMessage) => {}
@@ -156,7 +157,6 @@
 
                 cameraLoading.style.display = 'none';
 
-                // Face API Logic (Opsional, disederhanakan agar tidak menimpa QR)
                 const videoEl = document.querySelector('#videoFeed video');
                 if (videoEl) {
                     const canvas = faceapi.createCanvasFromMedia(videoEl);
@@ -164,13 +164,14 @@
                     const displaySize = { width: videoEl.clientWidth, height: videoEl.clientHeight };
                     faceapi.matchDimensions(canvas, displaySize);
 
+                    // OPTIMASI 2: Turunkan kecepatan pemindai wajah jadi 1 detik sekali (1000ms)
                     setInterval(async () => {
                         const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions());
                         const resizedDetections = faceapi.resizeResults(detections, displaySize);
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         faceapi.draw.drawDetections(canvas, resizedDetections);
-                    }, 200);
+                    }, 1000); 
                 }
 
             } catch (err) {
