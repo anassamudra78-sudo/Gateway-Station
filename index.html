@@ -13,26 +13,36 @@
         #videoFeed { width: 100%; max-width: 640px; text-align: center; }
         #videoFeed__dashboard { display: none !important; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
-        #toast-notif { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(245, 158, 11, 0.95); color: white; padding: 15px 25px; font-weight: 800; font-size: 1.1rem; border-radius: 12px; z-index: 50; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 80%; }
+        #toast-notif { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; padding: 15px 25px; font-weight: 800; font-size: 1.1rem; border-radius: 12px; z-index: 50; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 80%; }
+        
+        /* Animasi Modal Flyer */
+        .modal-masuk { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-hidden relative">
     
     <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 py-4 px-8 flex justify-between items-center z-10 shadow-lg">
         <div class="flex items-center gap-4">
             <div class="bg-emerald-500 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                <i class="fa-solid fa-database text-2xl text-white"></i>
+                <i class="fa-solid fa-shield-halved text-2xl text-white"></i>
             </div>
             <div>
                 <h1 class="text-2xl font-extrabold tracking-tight text-white">SMART TEACHER</h1>
-                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (Permanent DB)</p>
+                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (Anti-Spam)</p>
             </div>
         </div>
-        <div class="text-right hidden md:block">
-            <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Status Sistem</p>
-            <p id="ai-status" class="text-amber-400 font-bold text-sm flex items-center justify-end gap-2">
-                <i class="fa-solid fa-circle-notch fa-spin"></i> Menunggu...
-            </p>
+        <div class="flex items-center gap-6">
+            <!-- Tombol Flyer -->
+            <button onclick="toggleFlyer()" class="bg-indigo-500 hover:bg-indigo-400 text-white px-5 py-2.5 rounded-lg font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2 active:scale-95">
+                <i class="fa-solid fa-image"></i> <span class="hidden md:inline">Lihat Flyer</span>
+            </button>
+            <div class="text-right hidden md:block border-l border-slate-700 pl-6">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Status Sistem</p>
+                <p id="ai-status" class="text-amber-400 font-bold text-sm flex items-center justify-end gap-2">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> Menunggu...
+                </p>
+            </div>
         </div>
     </header>
 
@@ -58,7 +68,6 @@
                     <button onclick="mulaiSistem()" id="btn-start" class="bg-emerald-500 text-white px-8 py-4 rounded-xl font-extrabold shadow-lg hover:scale-105 transition-transform">
                         <i class="fa-solid fa-power-off mr-2"></i> NYALAKAN SISTEM
                     </button>
-                    <p class="mt-4 text-indigo-400 text-sm font-bold text-center"><i class="fa-solid fa-cloud-arrow-down mr-1"></i> Memori Wajah Permanen Aktif</p>
                 </div>
             </div>
         </section>
@@ -75,6 +84,26 @@
         </section>
     </main>
 
+    <!-- MODAL FLYER -->
+    <div id="flyer-modal" class="fixed inset-0 bg-slate-900/80 z-[100] hidden flex-col justify-center items-center backdrop-blur-sm">
+        <div class="bg-slate-800 p-6 rounded-3xl border border-slate-600 max-w-lg w-full mx-4 shadow-2xl relative modal-masuk">
+            <button onclick="toggleFlyer()" class="absolute -top-5 -right-5 bg-rose-500 text-white w-12 h-12 rounded-full font-bold shadow-lg hover:bg-rose-600 border-4 border-slate-900 text-xl flex items-center justify-center transition-transform hover:scale-110">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-2xl font-extrabold text-center text-white mb-4"><i class="fa-solid fa-scroll text-indigo-400 mr-2"></i> Informasi Sekolah</h2>
+            
+            <!-- Tempat Gambar Flyer (Ganti src dengan link gambar Anda) -->
+            <div class="w-full aspect-[4/5] bg-slate-700 rounded-2xl overflow-hidden flex items-center justify-center border-2 border-dashed border-slate-500 relative">
+                <img src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=800" alt="Flyer" class="absolute inset-0 w-full h-full object-cover opacity-50">
+                <div class="z-10 text-center p-4">
+                    <i class="fa-solid fa-bullhorn text-4xl text-slate-300 mb-2"></i>
+                    <p class="text-white font-bold text-lg shadow-black drop-shadow-md">Pengumuman Penting</p>
+                    <p class="text-slate-200 text-sm shadow-black drop-shadow-md">Ganti gambar ini dengan URL Flyer sekolah Anda di dalam kode.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 
@@ -87,23 +116,38 @@
         const faceDbStatus = document.getElementById('face-db-status');
         const toastNotif = document.getElementById('toast-notif');
         const liveFaceStatus = document.getElementById('live-face-status');
+        const flyerModal = document.getElementById('flyer-modal');
         
         let scanCount = 0;
         let registeredDescriptors = [];
         let faceMatcher = null;
-        let lastFaceLog = 0;
         let isFaceEngineRunning = false;
         
         window.pendingRegistration = null;
+
+        // FITUR ANTI-SPAM: Menyimpan siapa saja yang sudah absen hari ini
+        const sudahAbsenHariIni = new Set();
+        // Jeda waktu antar notifikasi "Sudah Absen" agar pop-up tidak berkedip spam
+        const toastCooldown = {}; 
 
         const dataSiswaDummy = {
             "QR-12345": { nama: "Muh Nashir", kelas: "IX-B", foto: "https://ui-avatars.com/api/?name=Muh+Nashir&background=10b981&color=fff" },
             "QR-67890": { nama: "Raisya", kelas: "VII-A", foto: "https://ui-avatars.com/api/?name=Raisya&background=3b82f6&color=fff" }
         };
 
+        // Fungsi Buka/Tutup Flyer
+        function toggleFlyer() {
+            if (flyerModal.classList.contains('hidden')) {
+                flyerModal.classList.remove('hidden');
+                flyerModal.classList.add('flex');
+            } else {
+                flyerModal.classList.add('hidden');
+                flyerModal.classList.remove('flex');
+            }
+        }
+
         // ================= FITUR PENYIMPANAN PERMANEN =================
         function simpanWajahKeMemori() {
-            // Ubah struktur AI menjadi array biasa agar bisa disave
             const dataToSave = registeredDescriptors.map(d => ({
                 label: d.label,
                 descriptors: d.descriptors.map(desc => Array.from(desc))
@@ -116,7 +160,6 @@
             const storedData = localStorage.getItem('SmartTeacher_FaceDB');
             if (storedData) {
                 const parsedData = JSON.parse(storedData);
-                // Kembalikan array biasa menjadi struktur Float32Array milik Face API
                 registeredDescriptors = parsedData.map(d => {
                     const descriptors = d.descriptors.map(desc => new Float32Array(desc));
                     return new faceapi.LabeledFaceDescriptors(d.label, descriptors);
@@ -130,20 +173,22 @@
         }
         // ==============================================================
 
-        function showToast(message, color = "rgba(245, 158, 11, 0.95)", duration = 8000) {
+        function showToast(message, color = "rgba(245, 158, 11, 0.95)", duration = 4000) {
             toastNotif.innerHTML = message;
             toastNotif.style.background = color;
             toastNotif.style.display = 'block';
             setTimeout(() => { toastNotif.style.display = 'none'; }, duration);
         }
 
-        function tambahLogKehadiran(qrData, metode = "QR", warnaMetode = "text-emerald-400") {
-            let siswa = dataSiswaDummy[qrData] || Object.values(dataSiswaDummy).find(s => s.nama === qrData) || { nama: qrData, kelas: "Terdaftar", foto: `https://ui-avatars.com/api/?name=${qrData}&background=f59e0b&color=fff` };
+        function tambahLogKehadiran(namaLengkap, metode = "QR", warnaMetode = "text-emerald-400") {
+            // Cari data siswa berdasarkan nama
+            let siswa = Object.values(dataSiswaDummy).find(s => s.nama === namaLengkap) || { nama: namaLengkap, kelas: "Terdaftar", foto: `https://ui-avatars.com/api/?name=${namaLengkap}&background=f59e0b&color=fff` };
+            
             const sekarang = new Date();
             const waktu = sekarang.getHours().toString().padStart(2, '0') + ':' + sekarang.getMinutes().toString().padStart(2, '0');
             
             const logItem = document.createElement('div');
-            logItem.className = "bg-slate-700/50 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-4 shadow-md";
+            logItem.className = "bg-slate-700/50 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-4 shadow-md animation-slide-in";
             logItem.innerHTML = `
                 <img src="${siswa.foto}" class="w-12 h-12 rounded-full border-2 border-emerald-500">
                 <div class="flex-1">
@@ -174,9 +219,8 @@
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
                 
-                // Muat wajah dari memori permanen tablet
                 muatWajahDariMemori();
-                aiStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-shield-check"></i> Mesin Stabil</span>`;
+                aiStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-shield-check"></i> Mesin Aktif</span>`;
 
                 const html5QrCode = new Html5Qrcode("videoFeed");
                 await html5QrCode.start(
@@ -190,10 +234,17 @@
 
                             if (!isRegistered) {
                                 window.pendingRegistration = namaSiswa;
-                                showToast(`QR Terbaca: ${namaSiswa} <br><br> SINGKIRKAN HP<br>Lalu Tatap Kamera Sekarang!`, "rgba(245, 158, 11, 0.95)", 10000);
+                                showToast(`QR: ${namaSiswa} <br>SINGKIRKAN HP & Tatap Kamera!`, "rgba(245, 158, 11, 0.95)", 10000);
                                 setTimeout(() => { window.pendingRegistration = null; }, 10000);
                             } else {
-                                tambahLogKehadiran(decodedText, "QR");
+                                // Cek Anti-Spam untuk QR Code
+                                if (!sudahAbsenHariIni.has(namaSiswa)) {
+                                    sudahAbsenHariIni.add(namaSiswa);
+                                    tambahLogKehadiran(namaSiswa, "QR ABSEN");
+                                    showToast(`<i class="fa-solid fa-circle-check text-4xl mb-2"></i><br>ABSEN SUKSES:<br>${namaSiswa.toUpperCase()}`, "rgba(16, 185, 129, 0.95)", 3000);
+                                } else {
+                                    showToast(`<i class="fa-solid fa-circle-exclamation text-4xl mb-2"></i><br>${namaSiswa.toUpperCase()}<br>SUDAH TERABSEN!`, "rgba(59, 130, 246, 0.95)", 3000);
+                                }
                             }
 
                             setTimeout(() => { window.lastScanned = null; }, 4000);
@@ -240,32 +291,47 @@
                                     
                                     const currentFaceDescriptor = detections[0].descriptor;
 
-                                    // Proses Bind & Simpan Permanen
+                                    // Proses 1: Registrasi Bind Wajah
                                     if (window.pendingRegistration) {
                                         const newLabeledDescriptor = new faceapi.LabeledFaceDescriptors(window.pendingRegistration, [currentFaceDescriptor]);
                                         registeredDescriptors.push(newLabeledDescriptor);
                                         faceMatcher = new faceapi.FaceMatcher(registeredDescriptors, 0.55);
                                         
-                                        // PANGGIL FUNGSI SIMPAN KE MEMORI TABLET
                                         simpanWajahKeMemori();
                                         
-                                        showToast(`<i class="fa-solid fa-circle-check text-4xl mb-2"></i><br>WAJAH ${window.pendingRegistration.toUpperCase()}<br>TERSAMBUNG PERMANEN!`, "rgba(16, 185, 129, 0.95)", 3000);
-                                        tambahLogKehadiran(window.pendingRegistration, "REGISTRASI BARU", "text-amber-400");
+                                        // Langsung ditambahkan ke daftar sudah absen agar tidak double login
+                                        sudahAbsenHariIni.add(window.pendingRegistration); 
+                                        
+                                        showToast(`<i class="fa-solid fa-circle-check text-4xl mb-2"></i><br>WAJAH ${window.pendingRegistration.toUpperCase()}<br>TERSAMBUNG!`, "rgba(16, 185, 129, 0.95)", 3000);
+                                        tambahLogKehadiran(window.pendingRegistration, "REGISTRASI", "text-amber-400");
                                         
                                         window.pendingRegistration = null;
                                     } 
-                                    // Proses Deteksi Wajah (Login Absen Harian)
+                                    // Proses 2: Deteksi Absen Face ID (Login Harian)
                                     else if (faceMatcher) {
                                         const bestMatch = faceMatcher.findBestMatch(currentFaceDescriptor);
                                         if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
-                                            const drawBox = new faceapi.draw.DrawBox(resizedDetections[0].detection.box, { label: bestMatch.label });
-                                            drawBox.draw(canvas);
-
-                                            const now = Date.now();
-                                            if (now - lastFaceLog > 8000) { 
-                                                tambahLogKehadiran(bestMatch.label, "FACE ID", "text-indigo-400");
-                                                lastFaceLog = now;
+                                            const namaDikenali = bestMatch.label;
+                                            
+                                            // LOGIKA ANTI-SPAM (Absen 1 Kali)
+                                            if (!sudahAbsenHariIni.has(namaDikenali)) {
+                                                // BELUM ABSEN -> Catat
+                                                sudahAbsenHariIni.add(namaDikenali);
+                                                tambahLogKehadiran(namaDikenali, "FACE ID", "text-indigo-400");
+                                                showToast(`<i class="fa-solid fa-circle-check text-4xl mb-2"></i><br>ABSEN SUKSES:<br>${namaDikenali.toUpperCase()}`, "rgba(16, 185, 129, 0.95)", 3000);
+                                            } else {
+                                                // SUDAH ABSEN -> Tampilkan pop-up peringatan berwarna biru
+                                                const now = Date.now();
+                                                if (!toastCooldown[namaDikenali] || now - toastCooldown[namaDikenali] > 5000) { 
+                                                    // Munculkan notif setiap 5 detik jika dia terus berdiri di situ
+                                                    showToast(`<i class="fa-solid fa-circle-exclamation text-4xl mb-2"></i><br>${namaDikenali.toUpperCase()}<br>SUDAH TERABSEN HARI INI!`, "rgba(59, 130, 246, 0.95)", 3000);
+                                                    toastCooldown[namaDikenali] = now;
+                                                }
                                             }
+
+                                            // Gambar kotak nama di wajah
+                                            const drawBox = new faceapi.draw.DrawBox(resizedDetections[0].detection.box, { label: namaDikenali });
+                                            drawBox.draw(canvas);
                                         }
                                     }
                                 } else {
