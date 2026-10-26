@@ -21,11 +21,11 @@
     <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 py-4 px-8 flex justify-between items-center z-10 shadow-lg">
         <div class="flex items-center gap-4">
             <div class="bg-emerald-500 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                <i class="fa-solid fa-microchip text-2xl text-white"></i>
+                <i class="fa-solid fa-database text-2xl text-white"></i>
             </div>
             <div>
                 <h1 class="text-2xl font-extrabold tracking-tight text-white">SMART TEACHER</h1>
-                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (System Fixed)</p>
+                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (Permanent DB)</p>
             </div>
         </div>
         <div class="text-right hidden md:block">
@@ -42,11 +42,10 @@
             <div class="bg-slate-800 rounded-2xl border border-slate-700 p-4 flex-1 flex flex-col relative shadow-2xl">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="font-bold text-slate-200"><i class="fa-solid fa-camera-viewfinder text-emerald-400 mr-2"></i> Pemindai Utama</h2>
-                    <span id="face-db-status" class="text-xs font-bold bg-slate-700 text-slate-300 px-3 py-1 rounded-full">0 Wajah Terdaftar</span>
+                    <span id="face-db-status" class="text-xs font-bold bg-indigo-600 text-white px-3 py-1 rounded-full shadow-lg"><i class="fa-solid fa-hard-drive mr-1"></i> 0 Wajah Tersimpan</span>
                 </div>
                 
                 <div id="scanner-container">
-                    <!-- Indikator Radar Wajah -->
                     <div id="live-face-status" class="absolute top-4 left-4 bg-slate-900/80 text-white text-xs px-3 py-2 rounded-lg border border-slate-600 z-50 shadow-lg font-bold">
                         <i class="fa-solid fa-eye-slash text-slate-400"></i> Radar AI Offline
                     </div>
@@ -59,6 +58,7 @@
                     <button onclick="mulaiSistem()" id="btn-start" class="bg-emerald-500 text-white px-8 py-4 rounded-xl font-extrabold shadow-lg hover:scale-105 transition-transform">
                         <i class="fa-solid fa-power-off mr-2"></i> NYALAKAN SISTEM
                     </button>
+                    <p class="mt-4 text-indigo-400 text-sm font-bold text-center"><i class="fa-solid fa-cloud-arrow-down mr-1"></i> Memori Wajah Permanen Aktif</p>
                 </div>
             </div>
         </section>
@@ -101,6 +101,35 @@
             "QR-67890": { nama: "Raisya", kelas: "VII-A", foto: "https://ui-avatars.com/api/?name=Raisya&background=3b82f6&color=fff" }
         };
 
+        // ================= FITUR PENYIMPANAN PERMANEN =================
+        function simpanWajahKeMemori() {
+            // Ubah struktur AI menjadi array biasa agar bisa disave
+            const dataToSave = registeredDescriptors.map(d => ({
+                label: d.label,
+                descriptors: d.descriptors.map(desc => Array.from(desc))
+            }));
+            localStorage.setItem('SmartTeacher_FaceDB', JSON.stringify(dataToSave));
+            faceDbStatus.innerHTML = `<i class="fa-solid fa-hard-drive mr-1"></i> ${registeredDescriptors.length} Wajah Tersimpan`;
+        }
+
+        function muatWajahDariMemori() {
+            const storedData = localStorage.getItem('SmartTeacher_FaceDB');
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                // Kembalikan array biasa menjadi struktur Float32Array milik Face API
+                registeredDescriptors = parsedData.map(d => {
+                    const descriptors = d.descriptors.map(desc => new Float32Array(desc));
+                    return new faceapi.LabeledFaceDescriptors(d.label, descriptors);
+                });
+                
+                if (registeredDescriptors.length > 0) {
+                    faceMatcher = new faceapi.FaceMatcher(registeredDescriptors, 0.55);
+                    faceDbStatus.innerHTML = `<i class="fa-solid fa-hard-drive mr-1"></i> ${registeredDescriptors.length} Wajah Tersimpan`;
+                }
+            }
+        }
+        // ==============================================================
+
         function showToast(message, color = "rgba(245, 158, 11, 0.95)", duration = 8000) {
             toastNotif.innerHTML = message;
             toastNotif.style.background = color;
@@ -109,7 +138,7 @@
         }
 
         function tambahLogKehadiran(qrData, metode = "QR", warnaMetode = "text-emerald-400") {
-            let siswa = dataSiswaDummy[qrData] || Object.values(dataSiswaDummy).find(s => s.nama === qrData) || { nama: qrData, kelas: "Tamu", foto: `https://ui-avatars.com/api/?name=${qrData}&background=f59e0b&color=fff` };
+            let siswa = dataSiswaDummy[qrData] || Object.values(dataSiswaDummy).find(s => s.nama === qrData) || { nama: qrData, kelas: "Terdaftar", foto: `https://ui-avatars.com/api/?name=${qrData}&background=f59e0b&color=fff` };
             const sekarang = new Date();
             const waktu = sekarang.getHours().toString().padStart(2, '0') + ':' + sekarang.getMinutes().toString().padStart(2, '0');
             
@@ -144,6 +173,9 @@
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
+                
+                // Muat wajah dari memori permanen tablet
+                muatWajahDariMemori();
                 aiStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-shield-check"></i> Mesin Stabil</span>`;
 
                 const html5QrCode = new Html5Qrcode("videoFeed");
@@ -172,13 +204,11 @@
 
                 cameraLoading.style.display = 'none';
 
-                // PERBAIKAN FATAL: Menunggu Kamera Benar-Benar Siap
                 const pantauKamera = setInterval(() => {
                     const videoEl = document.querySelector('video');
-                    // Jika elemen video sudah terbuat dan dimensinya sudah ada nilainya
                     if (videoEl && videoEl.videoWidth > 0) {
-                        clearInterval(pantauKamera); // Hentikan pemantauan
-                        aktifkanRadarWajah(videoEl); // Jalankan AI
+                        clearInterval(pantauKamera);
+                        aktifkanRadarWajah(videoEl);
                     }
                 }, 500);
 
@@ -210,17 +240,21 @@
                                     
                                     const currentFaceDescriptor = detections[0].descriptor;
 
+                                    // Proses Bind & Simpan Permanen
                                     if (window.pendingRegistration) {
                                         const newLabeledDescriptor = new faceapi.LabeledFaceDescriptors(window.pendingRegistration, [currentFaceDescriptor]);
                                         registeredDescriptors.push(newLabeledDescriptor);
                                         faceMatcher = new faceapi.FaceMatcher(registeredDescriptors, 0.55);
                                         
-                                        faceDbStatus.textContent = `${registeredDescriptors.length} Wajah Terdaftar`;
-                                        showToast(`<i class="fa-solid fa-circle-check text-4xl mb-2"></i><br>WAJAH ${window.pendingRegistration.toUpperCase()}<br>BERHASIL DISIMPAN!`, "rgba(16, 185, 129, 0.95)", 3000);
-                                        tambahLogKehadiran(window.pendingRegistration, "REGISTRASI WAJAH", "text-amber-400");
+                                        // PANGGIL FUNGSI SIMPAN KE MEMORI TABLET
+                                        simpanWajahKeMemori();
+                                        
+                                        showToast(`<i class="fa-solid fa-circle-check text-4xl mb-2"></i><br>WAJAH ${window.pendingRegistration.toUpperCase()}<br>TERSAMBUNG PERMANEN!`, "rgba(16, 185, 129, 0.95)", 3000);
+                                        tambahLogKehadiran(window.pendingRegistration, "REGISTRASI BARU", "text-amber-400");
                                         
                                         window.pendingRegistration = null;
                                     } 
+                                    // Proses Deteksi Wajah (Login Absen Harian)
                                     else if (faceMatcher) {
                                         const bestMatch = faceMatcher.findBestMatch(currentFaceDescriptor);
                                         if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
@@ -229,7 +263,7 @@
 
                                             const now = Date.now();
                                             if (now - lastFaceLog > 8000) { 
-                                                tambahLogKehadiran(bestMatch.label, "FACE ID", "text-emerald-400");
+                                                tambahLogKehadiran(bestMatch.label, "FACE ID", "text-indigo-400");
                                                 lastFaceLog = now;
                                             }
                                         }
@@ -237,18 +271,14 @@
                                 } else {
                                     liveFaceStatus.innerHTML = `<i class="fa-solid fa-user-xmark text-rose-400"></i> Tidak Ada Wajah`;
                                 }
-                            } catch (err) {
-                                liveFaceStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-500"></i> Error AI`;
-                            }
+                            } catch (err) {}
 
                             isFaceEngineRunning = false;
-                            setTimeout(jalankanRadar, 400); // Looping tiap 0.4 detik
+                            setTimeout(jalankanRadar, 400); 
                         }
 
-                        jalankanRadar(); // Mulai loop pertama kali
-                    } catch(e) {
-                        liveFaceStatus.innerHTML = `<i class="fa-solid fa-bug text-rose-500"></i> Error Kanvas`;
-                    }
+                        jalankanRadar(); 
+                    } catch(e) {}
                 }
 
             } catch (err) {
