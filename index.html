@@ -25,7 +25,7 @@
             </div>
             <div>
                 <h1 class="text-2xl font-extrabold tracking-tight text-white">SMART TEACHER</h1>
-                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (Stable Core)</p>
+                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (System Fixed)</p>
             </div>
         </div>
         <div class="text-right hidden md:block">
@@ -133,11 +133,11 @@
         }
 
         async function mulaiSistem() {
-            btnStart.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Memuat AI...`;
+            btnStart.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Memuat Mesin...`;
             btnStart.disabled = true;
 
             try {
-                aiStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memuat AI Wajah...`;
+                aiStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyiapkan Data Wajah...`;
                 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -158,7 +158,7 @@
 
                             if (!isRegistered) {
                                 window.pendingRegistration = namaSiswa;
-                                showToast(`QR: ${namaSiswa} <br><br> SINGKIRKAN HP<br>Tatap Kamera Sekarang!`, "rgba(245, 158, 11, 0.95)", 10000);
+                                showToast(`QR Terbaca: ${namaSiswa} <br><br> SINGKIRKAN HP<br>Lalu Tatap Kamera Sekarang!`, "rgba(245, 158, 11, 0.95)", 10000);
                                 setTimeout(() => { window.pendingRegistration = null; }, 10000);
                             } else {
                                 tambahLogKehadiran(decodedText, "QR");
@@ -172,74 +172,84 @@
 
                 cameraLoading.style.display = 'none';
 
-                const videoEl = document.querySelector('#videoFeed video');
-                const canvas = faceapi.createCanvasFromMedia(videoEl);
-                document.getElementById('scanner-container').append(canvas);
+                // PERBAIKAN FATAL: Menunggu Kamera Benar-Benar Siap
+                const pantauKamera = setInterval(() => {
+                    const videoEl = document.querySelector('video');
+                    // Jika elemen video sudah terbuat dan dimensinya sudah ada nilainya
+                    if (videoEl && videoEl.videoWidth > 0) {
+                        clearInterval(pantauKamera); // Hentikan pemantauan
+                        aktifkanRadarWajah(videoEl); // Jalankan AI
+                    }
+                }, 500);
 
-                // LOGIKA BARU: Anti-Freeze Berbasis Antrean (Recursive Timeout)
-                async function jalankanRadarWajah() {
-                    if (isFaceEngineRunning) return;
-                    isFaceEngineRunning = true;
-
+                function aktifkanRadarWajah(videoEl) {
                     try {
-                        if (videoEl.readyState >= 2) {
-                            const displaySize = { width: videoEl.clientWidth, height: videoEl.clientHeight };
-                            canvas.width = displaySize.width;
-                            canvas.height = displaySize.height;
+                        const canvas = faceapi.createCanvasFromMedia(videoEl);
+                        document.getElementById('scanner-container').append(canvas);
 
-                            // InputSize dikecilkan agar responsif di tablet
-                            const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }))
-                                .withFaceLandmarks()
-                                .withFaceDescriptors();
+                        async function jalankanRadar() {
+                            if (isFaceEngineRunning) return;
+                            isFaceEngineRunning = true;
 
-                            const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                            const ctx = canvas.getContext('2d');
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            faceapi.draw.drawDetections(canvas, resizedDetections);
+                            try {
+                                const displaySize = { width: videoEl.clientWidth, height: videoEl.clientHeight };
+                                canvas.width = displaySize.width;
+                                canvas.height = displaySize.height;
 
-                            if (detections.length > 0) {
-                                liveFaceStatus.innerHTML = `<i class="fa-solid fa-expand text-emerald-400"></i> ${detections.length} Wajah Terlihat`;
-                                
-                                const currentFaceDescriptor = detections[0].descriptor;
+                                const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }))
+                                    .withFaceLandmarks()
+                                    .withFaceDescriptors();
 
-                                if (window.pendingRegistration) {
-                                    const newLabeledDescriptor = new faceapi.LabeledFaceDescriptors(window.pendingRegistration, [currentFaceDescriptor]);
-                                    registeredDescriptors.push(newLabeledDescriptor);
-                                    faceMatcher = new faceapi.FaceMatcher(registeredDescriptors, 0.55);
+                                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                                const ctx = canvas.getContext('2d');
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                faceapi.draw.drawDetections(canvas, resizedDetections);
+
+                                if (detections.length > 0) {
+                                    liveFaceStatus.innerHTML = `<i class="fa-solid fa-expand text-emerald-400"></i> ${detections.length} Wajah Terlihat`;
                                     
-                                    faceDbStatus.textContent = `${registeredDescriptors.length} Wajah Terdaftar`;
-                                    showToast(`<i class="fa-solid fa-circle-check text-4xl mb-2"></i><br>WAJAH ${window.pendingRegistration.toUpperCase()}<br>BERHASIL DISIMPAN!`, "rgba(16, 185, 129, 0.95)", 3000);
-                                    tambahLogKehadiran(window.pendingRegistration, "REGISTRASI WAJAH", "text-amber-400");
-                                    
-                                    window.pendingRegistration = null;
-                                } 
-                                else if (faceMatcher) {
-                                    const bestMatch = faceMatcher.findBestMatch(currentFaceDescriptor);
-                                    if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
-                                        const drawBox = new faceapi.draw.DrawBox(resizedDetections[0].detection.box, { label: bestMatch.label });
-                                        drawBox.draw(canvas);
+                                    const currentFaceDescriptor = detections[0].descriptor;
 
-                                        const now = Date.now();
-                                        if (now - lastFaceLog > 8000) { 
-                                            tambahLogKehadiran(bestMatch.label, "FACE ID", "text-emerald-400");
-                                            lastFaceLog = now;
+                                    if (window.pendingRegistration) {
+                                        const newLabeledDescriptor = new faceapi.LabeledFaceDescriptors(window.pendingRegistration, [currentFaceDescriptor]);
+                                        registeredDescriptors.push(newLabeledDescriptor);
+                                        faceMatcher = new faceapi.FaceMatcher(registeredDescriptors, 0.55);
+                                        
+                                        faceDbStatus.textContent = `${registeredDescriptors.length} Wajah Terdaftar`;
+                                        showToast(`<i class="fa-solid fa-circle-check text-4xl mb-2"></i><br>WAJAH ${window.pendingRegistration.toUpperCase()}<br>BERHASIL DISIMPAN!`, "rgba(16, 185, 129, 0.95)", 3000);
+                                        tambahLogKehadiran(window.pendingRegistration, "REGISTRASI WAJAH", "text-amber-400");
+                                        
+                                        window.pendingRegistration = null;
+                                    } 
+                                    else if (faceMatcher) {
+                                        const bestMatch = faceMatcher.findBestMatch(currentFaceDescriptor);
+                                        if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
+                                            const drawBox = new faceapi.draw.DrawBox(resizedDetections[0].detection.box, { label: bestMatch.label });
+                                            drawBox.draw(canvas);
+
+                                            const now = Date.now();
+                                            if (now - lastFaceLog > 8000) { 
+                                                tambahLogKehadiran(bestMatch.label, "FACE ID", "text-emerald-400");
+                                                lastFaceLog = now;
+                                            }
                                         }
                                     }
+                                } else {
+                                    liveFaceStatus.innerHTML = `<i class="fa-solid fa-user-xmark text-rose-400"></i> Tidak Ada Wajah`;
                                 }
-                            } else {
-                                liveFaceStatus.innerHTML = `<i class="fa-solid fa-user-xmark text-rose-400"></i> Tidak Ada Wajah`;
+                            } catch (err) {
+                                liveFaceStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-500"></i> Error AI`;
                             }
+
+                            isFaceEngineRunning = false;
+                            setTimeout(jalankanRadar, 400); // Looping tiap 0.4 detik
                         }
-                    } catch (err) {
-                        console.error("AI Error:", err);
+
+                        jalankanRadar(); // Mulai loop pertama kali
+                    } catch(e) {
+                        liveFaceStatus.innerHTML = `<i class="fa-solid fa-bug text-rose-500"></i> Error Kanvas`;
                     }
-
-                    isFaceEngineRunning = false;
-                    setTimeout(jalankanRadarWajah, 300); // Beri nafas 0.3 detik antar scan agar tidak macet
                 }
-
-                // Mulai perputaran radar
-                jalankanRadarWajah();
 
             } catch (err) {
                 btnStart.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> ERROR!`;
