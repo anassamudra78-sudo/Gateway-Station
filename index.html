@@ -205,34 +205,40 @@
                 alert("Gagal mengirim data wajah ke Pusat. Cek koneksi internet!");
             }
         }
-// Fungsi Mengunduh Hafalan Wajah dari Pusat
+// Fungsi Mengunduh Hafalan Wajah dari Pusat (Bersih & Final)
         async function muatDaftarWajah() {
             try {
-                document.getElementById('info-wajah-terdaftar').innerText = "Mengunduh data...";
+                document.getElementById('info-wajah-terdaftar').innerText = "Memuat database...";
                 
-                // Sedot data dari Google Sheets (mode CORS normal karena butuh balikan data)
-                const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces`);
+                const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces`, {
+                    method: 'GET',
+                    redirect: "follow"
+                });
                 const dataWajah = await response.json();
                 
-                if (dataWajah.length > 0) {
+                if (dataWajah && dataWajah.length > 0) {
                     const labeledDescriptors = [];
                     
                     for (const data of dataWajah) {
-                        // Kembalikan deretan teks angka menjadi format array yang dikenali AI
-                        const descriptorArray = new Float32Array(JSON.parse(data.descriptor));
-                        const labeledDescriptor = new faceapi.LabeledFaceDescriptors(data.id, [descriptorArray]);
-                        labeledDescriptors.push(labeledDescriptor);
+                        if(data.descriptor) {
+                            const descriptorArray = new Float32Array(JSON.parse(data.descriptor));
+                            const labeledDescriptor = new faceapi.LabeledFaceDescriptors(String(data.id), [descriptorArray]);
+                            labeledDescriptors.push(labeledDescriptor);
+                        }
                     }
                     
-                    // Masukkan ke memori AI dengan tingkat toleransi 0.6 (60% kemiripan)
-                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
-                    document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> ${dataWajah.length} Wajah Terdaftar`;
+                    if(labeledDescriptors.length > 0) {
+                        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+                        document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> ${labeledDescriptors.length} Wajah Terdaftar`;
+                    } else {
+                        document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
+                    }
                 } else {
                     document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
                 }
             } catch (error) {
-                console.log("Gagal mengunduh wajah:", error);
-                document.getElementById('info-wajah-terdaftar').innerText = "Gagal memuat database";
+                console.log("Info Database:", error);
+                document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
             }
         }
         // Fungsi Utama Menyalakan Sistem
