@@ -3,352 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMART GATEWAY - Auto Vision & Smart QR</title>
+    <title>SMART TEACHER: Gateway Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Library QR & Face AI -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .scan-line { width: 100%; height: 2px; background: #10b981; box-shadow: 0 0 15px #10b981; position: absolute; animation: scan 2.5s infinite linear; z-index: 30; }
+        body { font-family: 'Inter', sans-serif; }
+        .scan-line {
+            width: 100%; height: 2px;
+            background: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+            position: absolute; animation: scan 3s infinite linear;
+        }
         @keyframes scan { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
-        /* Memastikan kotak wajah AI transparan & pas di atas video */
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; }
-        .fade-in { animation: fadeIn 0.4s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Memastikan canvas face-api menumpuk pas di atas video */
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
     </style>
 </head>
-<body class="bg-slate-950 text-white h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-hidden">
     
-    <!-- HEADER -->
-    <header class="bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center shadow-xl z-40">
-        <div class="flex items-center gap-3">
-            <div class="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center text-2xl shadow-lg shadow-emerald-500/20"><i class="fa-solid fa-satellite-dish text-white"></i></div>
+    <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 py-4 px-8 flex justify-between items-center z-10 shadow-lg">
+        <div class="flex items-center gap-4">
+            <div class="bg-emerald-500 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <i class="fa-solid fa-graduation-cap text-2xl text-white"></i>
+            </div>
             <div>
-                <h1 class="text-2xl font-black tracking-tight leading-none text-white">SMART GATEWAY</h1>
-                <p class="text-xs text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Universal Station (Auto Enroll)</p>
+                <h1 class="text-2xl font-extrabold tracking-tight text-white">SMART TEACHER</h1>
+                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Gateway Station (AI Ready)</p>
             </div>
         </div>
-        <div class="flex gap-3">
-            <div id="ai-status" class="bg-slate-800 border border-slate-700 text-amber-500 px-4 py-2 rounded-xl text-xs font-bold flex items-center shadow-sm">
-                <i class="fa-solid fa-brain mr-2"></i> Standby
-            </div>
-            <button onclick="document.getElementById('modal-setting').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-xl shadow-md transition-all flex items-center">
-                <i class="fa-solid fa-gear mr-2"></i> Pengaturan
-            </button>
+        <div class="text-right hidden md:block">
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Status AI</p>
+            <p id="ai-status" class="text-amber-400 font-bold text-sm flex items-center justify-end gap-2">
+                <i class="fa-solid fa-brain"></i> Menunggu Modul...
+            </p>
         </div>
     </header>
 
-    <main class="flex-1 flex flex-col md:flex-row p-5 gap-5 overflow-hidden relative">
-        
+    <main class="flex-1 flex p-6 gap-6 h-full">
         <!-- AREA KAMERA -->
-        <section class="flex-[3] bg-slate-900 rounded-[2rem] border-2 border-slate-800 flex flex-col relative overflow-hidden shadow-2xl">
-            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/80 z-40 relative">
-                <h2 class="font-bold text-slate-200 text-sm"><i class="fa-solid fa-camera-viewfinder text-emerald-500 mr-2"></i> Area Pindai Wajah & QR</h2>
-            </div>
-            
-            <div class="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
-                <!-- Wadah Video Kamera -->
-                <div id="videoFeed" class="absolute inset-0 w-full h-full overflow-hidden"></div>
-                
-                <div class="scan-line hidden" id="scan-line"></div>
-                
-                <!-- Pesan Pop-up Melayang (Untuk Notifikasi Registrasi) -->
-                <div id="pesan-tengah" class="absolute z-[60] bg-black/80 backdrop-blur-md border-2 border-emerald-500 text-white px-8 py-6 rounded-3xl font-black text-center text-xl lg:text-2xl shadow-[0_0_30px_rgba(16,185,129,0.5)] transform transition-all duration-300 scale-0 opacity-0 flex flex-col items-center gap-3">
-                    <i id="icon-pesan" class="fa-solid fa-expand text-4xl mb-2"></i>
-                    <span id="teks-pesan">Pesan...</span>
+        <section class="flex-[3] flex flex-col gap-4">
+            <div class="bg-slate-800 rounded-2xl border border-slate-700 p-4 flex-1 flex flex-col relative overflow-hidden shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-slate-200"><i class="fa-solid fa-camera-viewfinder text-brand-400 mr-2"></i> Pemindai Wajah & QR</h2>
                 </div>
                 
-                <div id="overlay-start" class="absolute inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center p-6 text-center">
-                    <button onclick="mulaiMesinPintar()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white px-8 py-5 rounded-2xl font-black text-base transition-transform hover:scale-105 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                        <i class="fa-solid fa-power-off mr-2 text-xl"></i> NYALAKAN MESIN GERBANG
-                    </button>
-                    <p class="text-xs text-slate-400 mt-5 font-medium max-w-md">Pastikan URL Database Sekolah sudah diisi. Jika siswa baru, cukup scan QR Codenya, mesin akan otomatis mendaftarkan wajahnya.</p>
+                <div class="relative w-full h-full bg-black rounded-xl overflow-hidden flex items-center justify-center border-2 border-slate-700">
+                    
+                    <!-- Wadah Kamera -->
+                    <div id="videoFeed" class="absolute top-0 left-0 w-full h-full overflow-hidden"></div>
+                    
+                    <!-- Garis Pindai -->
+                    <div class="scan-line hidden" id="scan-line-anim"></div>
+
+                    <!-- TOMBOL PEMANCING KAMERA -->
+                    <div id="camera-loading" class="absolute z-30 flex flex-col items-center justify-center w-full h-full bg-slate-900/90">
+                        <button onclick="mulaiSistem()" id="btn-start" class="bg-emerald-500 text-white px-8 py-4 rounded-xl font-extrabold shadow-lg shadow-emerald-500/30 mb-4 hover:scale-105 active:scale-95 transition-transform">
+                            <i class="fa-solid fa-power-off mr-2"></i> NYALAKAN SISTEM
+                        </button>
+                        <p id="error-text" class="font-semibold text-sm text-center px-4 text-slate-400">Pastikan Anda sudah mengizinkan akses kamera di browser.</p>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- AREA LOG KEHADIRAN -->
-        <section class="flex-[2] bg-slate-900 rounded-[2rem] border-2 border-slate-800 flex flex-col shadow-xl">
-            <div class="p-5 border-b border-slate-800 bg-slate-900/80 flex justify-between items-center">
-                <h2 class="font-bold text-slate-200 text-sm"><i class="fa-solid fa-list-check text-indigo-400 mr-2"></i> Log Kehadiran Real-Time</h2>
-                <span id="counter-log" class="text-xs font-black text-slate-900 bg-emerald-500 px-3 py-1 rounded-lg">0 Masuk</span>
-            </div>
-            <div id="log-list" class="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar">
-                <div class="text-center text-slate-500 text-xs py-10 italic">Belum ada siswa yang masuk...</div>
+        <!-- AREA LOG DATA -->
+        <section class="flex-[2] flex flex-col gap-4">
+            <div class="bg-slate-800 rounded-2xl border border-slate-700 p-5 flex-1 flex flex-col shadow-2xl">
+                <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-700">
+                    <h2 class="font-bold text-slate-200 text-lg"><i class="fa-solid fa-list-check text-emerald-400 mr-2"></i> Log Kehadiran</h2>
+                    <span class="bg-slate-700 text-slate-300 text-xs font-bold py-1 px-3 rounded-full" id="total-scan">0 Terpindai</span>
+                </div>
+                <div id="log-container" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
             </div>
         </section>
     </main>
 
-    <!-- MODAL PENGATURAN -->
-    <div id="modal-setting" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4 fade-in">
-        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-8 w-full max-w-lg shadow-2xl relative">
-            <h3 class="text-xl font-black mb-1 text-white"><i class="fa-solid fa-link text-indigo-500 mr-2"></i>Tautan Database Sekolah</h3>
-            <p class="text-xs text-slate-400 mb-6">Masukkan Tautan Web App Google Apps Script dari Database Sekolah Pusat.</p>
-            
-            <input type="text" id="input-url-gateway" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-950 border border-slate-700 text-sm rounded-xl p-4 mb-6 text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50">
-            
-            <div class="flex gap-3">
-                <button onclick="simpanPengaturan()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 font-bold py-3.5 rounded-xl text-sm shadow-lg text-white">Simpan & Restart</button>
-                <button onclick="document.getElementById('modal-setting').classList.add('hidden')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-6 rounded-xl text-sm border border-slate-700">Tutup</button>
-            </div>
-        </div>
-    </div>
+    <!-- Library 1: QR Code -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Library 2: Face API (Otak AI) -->
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 
     <script>
-        let dbWajah = [];
-        let gatewayUrl = localStorage.getItem('URL_GATEWAY_SEKOLAH') || "";
-        let recentScans = {}; // Cooldown anti-spam
-        let isSystemReady = false;
-        let isEnrollingFace = false; // Flag proses pendaftaran wajah
+        const cameraLoading = document.getElementById('camera-loading');
+        const logContainer = document.getElementById('log-container');
+        const totalScan = document.getElementById('total-scan');
+        const errorText = document.getElementById('error-text');
+        const btnStart = document.getElementById('btn-start');
+        const scanLine = document.getElementById('scan-line-anim');
+        const aiStatus = document.getElementById('ai-status');
+        let scanCount = 0;
 
-        // Bunyi Beep Pendek
-        function playBeep() {
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(()=>{});
-        }
+        // Data Simulasi
+        const dataSiswaDummy = {
+            "QR-12345": { nama: "Muh Nashir", kelas: "IX-B", foto: "https://ui-avatars.com/api/?name=Muh+Nashir&background=10b981&color=fff" },
+            "QR-67890": { nama: "Raisya", kelas: "VII-A", foto: "https://ui-avatars.com/api/?name=Raisya&background=3b82f6&color=fff" }
+        };
 
-        window.onload = () => {
-            if(gatewayUrl) document.getElementById('input-url-gateway').value = gatewayUrl;
-            else document.getElementById('modal-setting').classList.remove('hidden');
-        }
-
-        function simpanPengaturan() {
-            let url = document.getElementById('input-url-gateway').value.trim();
-            if(!url) return alert("URL tidak boleh kosong!");
-            localStorage.setItem('URL_GATEWAY_SEKOLAH', url);
-            alert("Tautan disimpan! Mesin akan dimuat ulang.");
-            window.location.reload();
-        }
-
-        // Tampilkan pesan besar di tengah kamera
-        function tampilkanPesanTengah(teks, warna = "emerald", icon = "fa-camera") {
-            const box = document.getElementById('pesan-tengah');
-            document.getElementById('teks-pesan').innerHTML = teks;
-            document.getElementById('icon-pesan').className = `fa-solid ${icon} text-4xl mb-2 text-${warna}-400`;
-            box.className = `absolute z-[60] bg-black/80 backdrop-blur-md border-2 border-${warna}-500 text-white px-8 py-6 rounded-3xl font-black text-center text-xl lg:text-2xl shadow-[0_0_30px_rgba(16,185,129,0.5)] transform transition-all duration-300 scale-100 opacity-100 flex flex-col items-center gap-3`;
-        }
-
-        function sembunyikanPesanTengah() {
-            document.getElementById('pesan-tengah').classList.replace('scale-100', 'scale-0');
-            document.getElementById('pesan-tengah').classList.replace('opacity-100', 'opacity-0');
-        }
-
-        // =======================================================
-        // MESIN UTAMA (GABUNGAN QR & FACE AI)
-        // =======================================================
-        async function mulaiMesinPintar() {
-            if(!gatewayUrl) { alert("Isi URL Database Sekolah di Pengaturan terlebih dahulu!"); return; }
+        // Fungsi Cetak Kehadiran
+        function tambahLogKehadiran(qrData, metode = "QR") {
+            const siswa = dataSiswaDummy[qrData] || { nama: qrData, kelas: "Tamu", foto: `https://ui-avatars.com/api/?name=${qrData}&background=f59e0b&color=fff` };
             
-            document.getElementById('overlay-start').classList.add('hidden');
-            const statusEl = document.getElementById('ai-status');
+            const sekarang = new Date();
+            const waktu = sekarang.getHours().toString().padStart(2, '0') + ':' + sekarang.getMinutes().toString().padStart(2, '0');
+            const logItem = document.createElement('div');
+            logItem.className = "bg-slate-700/50 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-4 transform transition-all duration-300 shadow-md";
+            logItem.innerHTML = `
+                <img src="${siswa.foto}" class="w-12 h-12 rounded-full border-2 border-emerald-500 shadow-sm">
+                <div class="flex-1">
+                    <h3 class="font-bold text-white text-md">${siswa.nama}</h3>
+                    <p class="text-slate-400 text-xs font-semibold">Kelas ${siswa.kelas}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-emerald-400 font-black text-lg">${waktu}</p>
+                    <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Hadir via ${metode}</p>
+                </div>
+            `;
+            logContainer.insertBefore(logItem, logContainer.firstChild);
+            scanCount++;
+            totalScan.textContent = `${scanCount} Terpindai`;
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(e=>console.log(e));
+        }
+
+        // Fungsi Utama Menyalakan Sistem
+        async function mulaiSistem() {
+            btnStart.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Menginisiasi AI...`;
+            btnStart.disabled = true;
 
             try {
-                // 1. Sedot Memori Wajah
-                statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Sedot Memori Database...`;
-                try {
-                    let res = await fetch(gatewayUrl + "?action=get_faces");
-                    dbWajah = await res.json();
-                } catch(e) { console.warn("Database wajah kosong atau gagal ditarik."); }
-
-                // 2. Download Modul AI
-                statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Download Modul AI...`;
-                const modelPath = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+                // 1. Muat Model AI Wajah dari Server Publik (CDN)
+                aiStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memuat Model Wajah...`;
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
                 await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
-                    faceapi.nets.faceLandmark68Net.loadFromUri(modelPath),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(modelPath)
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
+                aiStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-brain"></i> AI Aktif & Siap</span>`;
 
-                statusEl.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-circle-check mr-2"></i> Gateway Aktif</span>`;
-                document.getElementById('scan-line').classList.remove('hidden');
-
-                // 3. Nyalakan Kamera dengan HMTL5-QRCode (Untuk Baca QR)
+                // 2. Nyalakan Kamera untuk QR (Yang mana videonya akan dipakai oleh AI juga)
                 const html5QrCode = new Html5Qrcode("videoFeed");
                 await html5QrCode.start(
                     { facingMode: "user" },
-                    { fps: 15, qrbox: { width: 300, height: 300 } },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
-                        prosesPayloadQR(decodedText);
+                        if (!window.lastScanned || window.lastScanned !== decodedText) {
+                            window.lastScanned = decodedText;
+                            tambahLogKehadiran(decodedText, "QR");
+                            setTimeout(() => { window.lastScanned = null; }, 3000);
+                        }
                     },
-                    (errorMessage) => { /* Abaikan error pencarian frame */ }
+                    (errorMessage) => { /* Abaikan error pencarian wajar */ }
                 );
 
-                // 4. Setelah Kamera Menyala, Tempelkan "Mata AI" (Face-API) ke Video yang Sama
+                // 3. UI Berubah saat sukses
+                cameraLoading.style.display = 'none';
+                scanLine.classList.remove('hidden');
+
+                // 4. Tangkap Video HMTL5-QRCode untuk dianalisis wajahnya
                 const videoEl = document.querySelector('#videoFeed video');
                 if (videoEl) {
-                    const canvas = faceapi.createCanvasFromMedia(videoEl);
-                    document.getElementById('videoFeed').appendChild(canvas);
-                    
-                    // Supaya kotak wajah presisi dengan video
-                    const checkSize = setInterval(() => {
-                        if (videoEl.videoWidth > 0) {
-                            clearInterval(checkSize);
-                            const displaySize = { width: videoEl.clientWidth, height: videoEl.clientHeight };
-                            faceapi.matchDimensions(canvas, displaySize);
-                            isSystemReady = true;
+                    // KUNCI PERBAIKAN: Tunggu sampai video benar-benar "playing"
+                    videoEl.addEventListener('playing', () => {
+                        // Buat kanvas kaca untuk menggambar kotak wajah
+                        const canvas = faceapi.createCanvasFromMedia(videoEl);
+                        document.getElementById('videoFeed').append(canvas);
+                        const displaySize = { width: videoEl.videoWidth, height: videoEl.videoHeight };
+                        faceapi.matchDimensions(canvas, displaySize);
 
-                            // LOOPING PENDETEKSI WAJAH (Setiap 0.5 Detik)
-                            setInterval(async () => {
-                                if(!isSystemReady || isEnrollingFace) return; // Jangan scan wajah kalau lagi proses daftar
-
-                                const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
-                                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-                                
-                                // Gambar Kotak Hijau Wajah
-                                faceapi.draw.drawDetections(canvas, resizedDetections);
-
-                                if(detections.length > 0) {
-                                    cocokkanWajah(detections[0].descriptor);
-                                }
-                            }, 500);
-                        }
-                    }, 100);
+                        // Deteksi wajah berulang kali
+                        setInterval(async () => {
+                            const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+                            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                            
+                            // Gambar kotak hijau di wajah yang terdeteksi
+                            faceapi.draw.drawDetections(canvas, resizedDetections);
+                            
+                            // Jika mendeteksi wajah (bisa dikembangkan untuk pengenalan nama nanti)
+                            if (detections.length > 0 && !window.faceScanned) {
+                                window.faceScanned = true;
+                                console.log("Wajah terdeteksi!");
+                                // Di sini nanti tempat mencocokkan wajah dengan database foto siswa
+                                setTimeout(() => { window.faceScanned = false; }, 5000);
+                            }
+                        }, 100);
+                    });
                 }
 
             } catch (err) {
-                alert("Gagal menyalakan sistem: " + err);
-                document.getElementById('overlay-start').classList.remove('hidden');
+                btnStart.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> COBA LAGI`;
+                btnStart.disabled = false;
+                btnStart.classList.replace('bg-emerald-500', 'bg-rose-500');
+                errorText.innerHTML = `<span class="text-rose-400 font-bold block mt-2 text-lg">ERROR: ${err.name || err.message || err}</span>`;
             }
-        }
-
-        // =======================================================
-        // PROSES PEMECAHAN SMART QR (Payload: NIS|Nama|Kelas)
-        // =======================================================
-        function prosesPayloadQR(teksQR) {
-            // Jika ada yang bawa QR Code saat proses daftar wajah berlangsung, abaikan dulu.
-            if(isEnrollingFace) return; 
-
-            // Pecah data: 152100|ARSA|PERSONAL
-            let dataSplit = teksQR.split('|');
-            let nis = dataSplit[0].trim();
-            let nama = dataSplit.length > 1 ? dataSplit[1].trim() : "Siswa";
-            let kelas = dataSplit.length > 2 ? dataSplit[2].trim() : "-";
-
-            // Cegah scan QR beruntun (1 menit)
-            if(recentScans[nis] && (Date.now() - recentScans[nis] < 60000)) return; 
-            
-            // 1. Langsung Absen!
-            catatKehadiranDiLayar(nis, nama, kelas, "QR Scan");
-
-            // 2. Cek apakah NIS ini sudah punya rekaman wajah di database gerbang?
-            let isRegistered = dbWajah.some(w => String(w.nis) === String(nis));
-            
-            if(!isRegistered) {
-                // WAJAH BELUM ADA! Langsung Paksa Pendaftaran Otomatis!
-                pendaftaranWajahOtomatis(nis, nama, kelas);
-            }
-        }
-
-        // =======================================================
-        // PENDAFTARAN WAJAH OTOMATIS (TANPA TOMBOL KLIK)
-        // =======================================================
-        async function pendaftaranWajahOtomatis(nis, nama, kelas) {
-            isEnrollingFace = true; // Hentikan deteksi wajah biasa sementara
-            
-            tampilkanPesanTengah(`Pendaftaran Wajah: <span class="text-amber-300">${nama}</span><br><span class="text-sm font-normal">Tatap kamera dengan jelas...</span>`, "amber", "fa-user-focus");
-
-            const videoEl = document.querySelector('#videoFeed video');
-            let attempts = 0;
-            let maxAttempts = 20; // Kasih waktu 10 detik (20 x 500ms) untuk menatap kamera
-
-            let enrollInterval = setInterval(async () => {
-                attempts++;
-                const deteksi = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-                
-                if(deteksi && deteksi.descriptor) {
-                    clearInterval(enrollInterval);
-                    tampilkanPesanTengah(`Wajah Terkunci!<br><span class="text-sm font-normal">Menyimpan ke Server Sekolah...</span>`, "emerald", "fa-cloud-arrow-up");
-
-                    let payload = { action: "enroll", nis: nis, nama: nama, kelas: kelas, descriptor: Array.from(deteksi.descriptor) };
-                    
-                    try {
-                        // Tembak ke Google Sheets
-                        await fetch(gatewayUrl, { method: "POST", body: JSON.stringify(payload) });
-                        
-                        // Tambahkan ke memori lokal agar bisa langsung dikenali sedetik kemudian
-                        dbWajah.push({ nis: nis, nama: nama, kelas: kelas, descriptor: Array.from(deteksi.descriptor) });
-                        
-                        tampilkanPesanTengah(`SUKSES!<br><span class="text-sm font-normal">Wajah ${nama} berhasil diingat.</span>`, "emerald", "fa-check-circle");
-                    } catch(e) {
-                        tampilkanPesanTengah(`GAGAL TERSIMPAN!<br><span class="text-sm font-normal">Periksa koneksi internet.</span>`, "rose", "fa-triangle-exclamation");
-                    }
-                    
-                    setTimeout(() => { sembunyikanPesanTengah(); isEnrollingFace = false; }, 3000);
-                }
-
-                if(attempts >= maxAttempts) {
-                    clearInterval(enrollInterval);
-                    tampilkanPesanTengah(`Gagal menangkap wajah.<br><span class="text-sm font-normal">Silakan scan ulang QR Anda besok.</span>`, "rose", "fa-xmark-circle");
-                    setTimeout(() => { sembunyikanPesanTengah(); isEnrollingFace = false; }, 3000);
-                }
-            }, 500);
-        }
-
-        // =======================================================
-        // PENCOCOKAN WAJAH AI DARI MEMORI
-        // =======================================================
-        function cocokkanWajah(descriptorWajahKamera) {
-            if(dbWajah.length === 0) return;
-            
-            let bestMatch = null;
-            let minDistance = 999;
-            
-            dbWajah.forEach(wDb => {
-                let memoriFloat = new Float32Array(wDb.descriptor);
-                let distance = faceapi.euclideanDistance(descriptorWajahKamera, memoriFloat);
-                if(distance < minDistance) {
-                    minDistance = distance;
-                    bestMatch = wDb;
-                }
-            });
-
-            // Ambang batas akurasi: 0.48 (Sangat Presisi)
-            if(minDistance < 0.48 && bestMatch) {
-                // Jika wajah cocok, langsung absen tanpa QR!
-                if(recentScans[bestMatch.nis] && (Date.now() - recentScans[bestMatch.nis] < 60000)) return; // Anti-spam 1 menit
-                catatKehadiranDiLayar(bestMatch.nis, bestMatch.nama, bestMatch.kelas, "Face AI");
-            }
-        }
-
-        // =======================================================
-        // PENCATATAN LOG KEHADIRAN (FORMAT NAMA, NIS, WAKTU)
-        // =======================================================
-        function catatKehadiranDiLayar(nis, nama, kelas, metode) {
-            recentScans[nis] = Date.now();
-
-            let today = new Date();
-            let tgl = today.toISOString().split('T')[0];
-            let waktu = today.toTimeString().slice(0, 5);
-
-            // Bersihkan teks "Belum ada siswa" jika ada
-            const logBox = document.getElementById('log-list');
-            if(logBox.innerText.includes("Belum ada siswa")) logBox.innerHTML = '';
-
-            let logHtml = `
-                <div class="bg-slate-800 p-4 rounded-2xl border border-emerald-500/50 flex justify-between items-center shadow-lg fade-in">
-                    <div>
-                        <h4 class="font-black text-white text-base uppercase">${nama}</h4>
-                        <p class="text-[11px] text-emerald-400 font-bold mt-1">NIS: ${nis} • ${kelas}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-sm font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-lg inline-block">Hadir</p>
-                        <p class="text-[10px] text-slate-500 font-medium mt-1">Jam ${waktu} via ${metode}</p>
-                    </div>
-                </div>
-            `;
-            logBox.insertAdjacentHTML('afterbegin', logHtml);
-            playBeep();
-
-            let counter = document.getElementById('counter-log');
-            counter.innerText = (parseInt(counter.innerText) || 0) + 1 + " Masuk";
-
-            // Tembak Log ke Google Sheets
-            let payload = { action: "scan", nis: nis, tanggal: tgl, waktu: waktu };
-            fetch(gatewayUrl, { method: "POST", body: JSON.stringify(payload) }).catch(e => console.log(e));
         }
     </script>
 </body>
