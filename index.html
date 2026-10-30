@@ -205,7 +205,36 @@
                 alert("Gagal mengirim data wajah ke Pusat. Cek koneksi internet!");
             }
         }
-
+// Fungsi Mengunduh Hafalan Wajah dari Pusat
+        async function muatDaftarWajah() {
+            try {
+                document.getElementById('info-wajah-terdaftar').innerText = "Mengunduh data...";
+                
+                // Sedot data dari Google Sheets (mode CORS normal karena butuh balikan data)
+                const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces`);
+                const dataWajah = await response.json();
+                
+                if (dataWajah.length > 0) {
+                    const labeledDescriptors = [];
+                    
+                    for (const data of dataWajah) {
+                        // Kembalikan deretan teks angka menjadi format array yang dikenali AI
+                        const descriptorArray = new Float32Array(JSON.parse(data.descriptor));
+                        const labeledDescriptor = new faceapi.LabeledFaceDescriptors(data.id, [descriptorArray]);
+                        labeledDescriptors.push(labeledDescriptor);
+                    }
+                    
+                    // Masukkan ke memori AI dengan tingkat toleransi 0.6 (60% kemiripan)
+                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+                    document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> ${dataWajah.length} Wajah Terdaftar`;
+                } else {
+                    document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
+                }
+            } catch (error) {
+                console.log("Gagal mengunduh wajah:", error);
+                document.getElementById('info-wajah-terdaftar').innerText = "Gagal memuat database";
+            }
+        }
         // Fungsi Utama Menyalakan Sistem
         async function mulaiSistem() {
             btnStart.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Menginisiasi AI...`;
@@ -221,7 +250,7 @@
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
                 aiStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-brain"></i> AI Aktif & Siap</span>`;
-
+await muatDaftarWajah(); 
                 // 2. Nyalakan Kamera untuk QR
                 const html5QrCode = new Html5Qrcode("videoFeed");
                 await html5QrCode.start(
