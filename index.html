@@ -313,7 +313,7 @@ let globalDataWajah = [];
                     }
                     
                     if(labeledDescriptors.length > 0) {
-                        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+                        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.35);
                         document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> ${labeledDescriptors.length} Wajah Terdaftar`;
                     } else {
                         document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
