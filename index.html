@@ -192,7 +192,8 @@ let globalDataWajah = [];
                     document.getElementById(`waktu_${logId}`).className = "text-rose-500 font-black text-lg opacity-50 line-through";
                     
                     // Bebaskan anak tersebut dari memori agar dia bisa absen ulang!
-                    const hariIni = new Date().toISOString().split('T')[0];
+                    const nowLocal = new Date();
+const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).padStart(2, '0') + '-' + String(nowLocal.getDate()).padStart(2, '0');
                     let logHarian = JSON.parse(localStorage.getItem('gateway_absen_' + hariIni) || '[]');
                     logHarian = logHarian.filter(id => id !== nis);
                     localStorage.setItem('gateway_absen_' + hariIni, JSON.stringify(logHarian));
@@ -511,7 +512,8 @@ let globalDataWajah = [];
                                             bufferWajah = {}; // Bersihkan buffer
 
                                             const nisSiswa = labelMentah.split('|')[0];
-                                            const hariIni = new Date().toISOString().split('T')[0];
+                                          const nowLocal = new Date();
+const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).padStart(2, '0') + '-' + String(nowLocal.getDate()).padStart(2, '0');
                                             let logHarian = JSON.parse(localStorage.getItem('gateway_absen_' + hariIni) || '[]');
                                             
                                             if (logHarian.includes(nisSiswa)) {
