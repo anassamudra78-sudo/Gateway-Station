@@ -123,6 +123,7 @@
 let globalDataWajah = [];
         const URL_GATEWAY_PUSAT = "https://script.google.com/macros/s/AKfycbzcHLMR_oS83RcSUucJ5PWEkD7MxIAkNf_vQ-tDOHaUeJ-AelGf0KmPZTCW9EGyEHxJ/exec";
 
+       // DESAIN BARU 3: LOG KEHADIRAN DINAMIS (ANTI DATA HILANG / OFFLINE SENSOR)
         async function tambahLogKehadiran(qrData, metode = "QR") {
             const sekarang = new Date();
             const waktu = sekarang.getHours().toString().padStart(2, '0') + ':' + sekarang.getMinutes().toString().padStart(2, '0');
@@ -132,57 +133,117 @@ let globalDataWajah = [];
             const nama = parts[1] || "Siswa";
             const kelas = parts[2] || "-";
 
+            // Buat ID unik untuk elemen log ini agar bisa dilacak statusnya
+            const logId = 'log_' + Date.now();
+
             const logItem = document.createElement('div');
-            logItem.className = "bg-slate-700/50 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-4 transform transition-all duration-300 shadow-md fade-in";
+            logItem.id = logId;
+            // TAHAP 1: PENDING (Warna Kuning/Amber & Ikon Loading)
+            logItem.className = "bg-slate-700/50 border border-amber-500/30 rounded-xl p-4 flex items-center gap-4 transform transition-all duration-300 shadow-md fade-in";
             logItem.innerHTML = `
-                <div class="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold"><i class="fa-solid fa-check-double"></i></div>
+                <div id="icon_${logId}" class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold shadow-lg shadow-amber-500/30"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>
                 <div class="flex-1">
                     <h3 class="font-black text-white text-md uppercase tracking-wide">${nama}</h3>
-                    <p class="text-emerald-400 text-[11px] font-bold">NIS: ${nis} &nbsp;|&nbsp; KELAS: ${kelas}</p>
+                    <p id="teks_${logId}" class="text-amber-400 text-[11px] font-bold animate-pulse">MENGIRIM KE CLOUD...</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-emerald-400 font-black text-lg">${waktu}</p>
+                    <p id="waktu_${logId}" class="text-amber-400 font-black text-lg">${waktu}</p>
                     <p class="text-slate-400 text-[9px] uppercase font-bold tracking-wider">via ${metode}</p>
                 </div>
             `;
             logContainer.insertBefore(logItem, logContainer.firstChild);
 
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(e=>console.log(e));
+            // Bunyi scan masuk
+            try {
+                new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(e=>console.log(e));
+            } catch(e) {}
 
             try {
+                // Tembak data ke Server Pusat
                 await fetch(`${URL_GATEWAY_PUSAT}?action=insertLog&qr=${encodeURIComponent(nis)}&metode=${encodeURIComponent(metode)}`, {
                     method: 'GET',
                     mode: 'no-cors'
                 });
+                
+                // TAHAP 2: SUKSES (Ubah jadi Centang Hijau)
+                const logEl = document.getElementById(logId);
+                if(logEl) {
+                    logEl.className = "bg-slate-700/50 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-4 transform transition-all duration-300 shadow-md fade-in";
+                    document.getElementById(`icon_${logId}`).className = "w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-500/30";
+                    document.getElementById(`icon_${logId}`).innerHTML = `<i class="fa-solid fa-check-double text-xl"></i>`;
+                    document.getElementById(`teks_${logId}`).className = "text-emerald-400 text-[11px] font-bold";
+                    document.getElementById(`teks_${logId}`).innerHTML = `NIS: ${nis} &nbsp;|&nbsp; KELAS: ${kelas}`;
+                    document.getElementById(`waktu_${logId}`).className = "text-emerald-400 font-black text-lg";
+                }
+                
                 scanCount++;
                 totalScan.textContent = `${scanCount} Hadir`;
             } catch (error) {
                 console.error("Gagal kirim background:", error);
+                
+                // TAHAP 3: GAGAL / OFFLINE (Ubah jadi Peringatan Merah)
+                const logEl = document.getElementById(logId);
+                if(logEl) {
+                    logEl.className = "bg-rose-950/40 border border-rose-500/50 rounded-xl p-4 flex items-center gap-4 transform transition-all duration-300 shadow-md fade-in";
+                    document.getElementById(`icon_${logId}`).className = "w-12 h-12 rounded-full bg-rose-600 flex items-center justify-center text-white font-bold shadow-lg shadow-rose-600/30";
+                    document.getElementById(`icon_${logId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-xl"></i>`;
+                    document.getElementById(`teks_${logId}`).className = "text-rose-400 text-[11px] font-black";
+                    document.getElementById(`teks_${logId}`).innerHTML = `<i class="fa-solid fa-wifi mr-1"></i> GAGAL CLOUD (OFFLINE)`;
+                    document.getElementById(`waktu_${logId}`).className = "text-rose-500 font-black text-lg opacity-50 line-through";
+                    
+                    // Bebaskan anak tersebut dari memori agar dia bisa absen ulang!
+                    const hariIni = new Date().toISOString().split('T')[0];
+                    let logHarian = JSON.parse(localStorage.getItem('gateway_absen_' + hariIni) || '[]');
+                    logHarian = logHarian.filter(id => id !== nis);
+                    localStorage.setItem('gateway_absen_' + hariIni, JSON.stringify(logHarian));
+                }
             }
         }
+        
+     // PENGAMANAN SISTEM AUDIO (Mencegah Crash Browser jika banyak yang absen ganda)
+        let gatewayAudioCtx = null;
+        function getGatewayAudioCtx() {
+            if (!gatewayAudioCtx) {
+                gatewayAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (gatewayAudioCtx.state === 'suspended') {
+                gatewayAudioCtx.resume();
+            }
+            return gatewayAudioCtx;
+        }
 
-      function tolakAbsenGanda(qrData) {
+        // DESAIN BARU: POP-UP GLASSMORPHISM ELEGAN ANTI-BLOKIR LAYAR
+        function tolakAbsenGanda(qrData) {
             const parts = qrData.split('|');
             const nama = parts[1] || "Siswa";
             
-            // Hapus pop-up lama jika masih ada (biar tidak numpuk)
             const oldToast = document.getElementById('toast-ganda');
             if(oldToast) oldToast.remove();
 
-            // Buat Pop-Up melayang di tengah layar
+            // Desain transparan yang melayang elegan dari atas layar
             const toast = document.createElement('div');
             toast.id = 'toast-ganda';
-            toast.className = "fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-rose-600 text-white px-10 py-6 rounded-[2rem] shadow-[0_0_50px_rgba(225,29,72,0.6)] z-[9999] flex flex-col items-center animate-shake fade-in border-4 border-rose-400";
+            toast.className = "fixed top-6 left-1/2 transform -translate-x-1/2 bg-slate-950/80 backdrop-blur-xl border border-rose-500/50 text-white px-6 py-4 rounded-3xl shadow-[0_15px_40px_rgba(225,29,72,0.4)] z-[9999] flex items-center gap-4 transition-all duration-500 translate-y-[-150%] opacity-0";
             toast.innerHTML = `
-                <i class="fa-solid fa-hand text-6xl mb-4"></i>
-                <h3 class="font-black text-2xl tracking-widest text-center">SUDAH ABSEN HARI INI!</h3>
-                <p class="text-base font-bold uppercase mt-1 text-rose-200 text-center">${nama}</p>
+                <div class="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/40 shrink-0">
+                    <i class="fa-solid fa-hand text-rose-400 text-2xl animate-pulse"></i>
+                </div>
+                <div class="text-left flex-1 min-w-[200px]">
+                    <h3 class="font-black text-[11px] tracking-widest text-rose-400 uppercase">Telah Hadir Hari Ini</h3>
+                    <p class="text-base font-bold text-white truncate">${nama}</p>
+                </div>
             `;
             document.body.appendChild(toast);
             
-            // Suara Error (Bip Rendah)
+            // Animasi masuk meluncur dari atas
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-[-150%]', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+            });
+            
+            // Pemutaran Suara Bip Aman
             try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const ctx = getGatewayAudioCtx();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'sawtooth';
@@ -195,11 +256,11 @@ let globalDataWajah = [];
                 osc.stop(ctx.currentTime + 0.3);
             } catch(e) {}
 
-            // Hilangkan Pop-Up setelah 3 detik
+            // Animasi meluncur keluar (hilang)
             setTimeout(() => { 
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-[-150%]', 'opacity-0');
+                setTimeout(() => toast.remove(), 500);
             }, 3000);
         }
 
@@ -399,6 +460,10 @@ let globalDataWajah = [];
                         const displaySize = { width: videoEl.videoWidth, height: videoEl.videoHeight };
                         faceapi.matchDimensions(canvas, displaySize);
 
+                       // IDE BERLIAN: BUFFER MEMORI WAJAH
+                        let bufferWajah = {}; // Menyimpan hitungan wajah yang tampil
+                        let wajahTerkonfirmasiTerakhir = ""; 
+                        
                         setInterval(async () => {
                             const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions())
                                 .withFaceLandmarks()
@@ -408,8 +473,7 @@ let globalDataWajah = [];
                             canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
                             faceapi.draw.drawDetections(canvas, resizedDetections);
                             
-                            if (detections.length > 0 && !window.faceScanned) {
-                                window.faceScanned = true;
+                            if (detections.length > 0) {
                                 const sidikWajah = detections[0].descriptor;
 
                                 if (isEnrolling) {
@@ -422,31 +486,59 @@ let globalDataWajah = [];
                                     btnRekam.disabled = true;
                                     btnRekam.className = "bg-slate-700 text-slate-500 font-bold py-2 px-6 rounded-lg transition-transform shadow-lg cursor-not-allowed";
                                     btnRekam.innerText = "REKAM WAJAH";
+                                    return; // Stop eksekusi agar tidak masuk ke proses absen
                                 } 
-                                else {
-                                    if (faceMatcher) {
-                                        const bestMatch = faceMatcher.findBestMatch(sidikWajah);
-                                        if (bestMatch.label !== "unknown") {
-                                            
-                                            const dataMentahQR = bestMatch.label;
-                                            const nisSiswa = dataMentahQR.split('|')[0];
+                                
+                                if (faceMatcher && !window.faceScanned) {
+                                    const bestMatch = faceMatcher.findBestMatch(sidikWajah);
+                                    
+                                    if (bestMatch.label !== "unknown") {
+                                        const labelMentah = bestMatch.label;
+                                        
+                                        // 1. CEK ANTI-NYANGKUT (Orang yang sama berdiri terus di depan kamera)
+                                        if (labelMentah === wajahTerkonfirmasiTerakhir) {
+                                            return; // Abaikan, biarkan orangnya pergi dulu
+                                        }
+
+                                        // 2. SISTEM BUFFER (Menghapus False Positive)
+                                        // Wajah harus terdeteksi minimal 3 kali berturut-turut
+                                        bufferWajah[labelMentah] = (bufferWajah[labelMentah] || 0) + 1;
+                                        
+                                        if (bufferWajah[labelMentah] >= 3) {
+                                            // Wajah sudah valid 100%!
+                                            window.faceScanned = true;
+                                            wajahTerkonfirmasiTerakhir = labelMentah; 
+                                            bufferWajah = {}; // Bersihkan buffer
+
+                                            const nisSiswa = labelMentah.split('|')[0];
                                             const hariIni = new Date().toISOString().split('T')[0];
-                                            
                                             let logHarian = JSON.parse(localStorage.getItem('gateway_absen_' + hariIni) || '[]');
                                             
                                             if (logHarian.includes(nisSiswa)) {
-                                                tolakAbsenGanda(dataMentahQR);
+                                                tolakAbsenGanda(labelMentah);
                                             } else {
                                                 logHarian.push(nisSiswa);
                                                 localStorage.setItem('gateway_absen_' + hariIni, JSON.stringify(logHarian));
-                                                
-                                                tambahLogKehadiran(dataMentahQR, "Face AI");
+                                                tambahLogKehadiran(labelMentah, "Face AI");
                                             }
+
+                                            // Cooldown absen
+                                            setTimeout(() => { 
+                                                window.faceScanned = false; 
+                                            }, 4000);
                                         }
+                                    } else {
+                                        // Jika mendeteksi wajah tak dikenal, bersihkan buffer agar tidak nyangkut
+                                        bufferWajah = {};
+                                        // Reset juga wajah terakhir agar orang sebelumnya bisa absen lagi kalau perlu (setelaH
+                                        setTimeout(() => { wajahTerkonfirmasiTerakhir = ""; }, 5000); 
                                     }
                                 }
-                                setTimeout(() => { window.faceScanned = false; }, 4000);
-                            } 
+                            } else {
+                                // Jika kamera tidak melihat wajah sama sekali (kosong)
+                                // Segera bersihkan ingatan wajah terakhir, tandanya orangnya sudah pergi
+                                setTimeout(() => { wajahTerkonfirmasiTerakhir = ""; }, 2000);
+                            }
                         }, 150);
                     });
                 }
