@@ -497,84 +497,18 @@
                             if (detections.length > 0) {
                                 const sidikWajah = detections[0].descriptor;
 
-                                // ========================================================
-                                // JIKA SEDANG PROSES MEREKAM WAJAH BARU (MODE DAFTAR - LEVEL BANKING)
-                                // ========================================================
+                                // JIKA SEDANG PROSES MEREKAM WAJAH BARU
                                 if (isEnrolling && currentMode === 'daftar') {
+                                    kirimSidikWajahKePusat(enrollTargetId, sidikWajah);
+                                    isEnrolling = false; 
+                                    
+                                    const inputEnroll = document.getElementById('input-enroll-id');
+                                    inputEnroll.value = "";
                                     const btnRekam = document.getElementById('btn-rekam');
-                                    const landmarks = deteksiPertama.landmarks;
-                                    
-                                    // 1. Mengambil titik koordinat mata dan hidung
-                                    const mataKiri = landmarks.getLeftEye();
-                                    const mataKanan = landmarks.getRightEye();
-                                    const hidung = landmarks.getNose();
-                                    
-                                    // Mencari titik tengah mata
-                                    const tengahMataKiri = mataKiri.reduce((acc, pt) => ({x: acc.x + pt.x, y: acc.y + pt.y}), {x:0, y:0});
-                                    tengahMataKiri.x /= mataKiri.length; tengahMataKiri.y /= mataKiri.length;
-                                    
-                                    const tengahMataKanan = mataKanan.reduce((acc, pt) => ({x: acc.x + pt.x, y: acc.y + pt.y}), {x:0, y:0});
-                                    tengahMataKanan.x /= mataKanan.length; tengahMataKanan.y /= mataKanan.length;
-
-                                    // 2. CEK KEMIRINGAN (ROLL) - Apakah kepala miring ke bahu?
-                                    const selisihY = tengahMataKanan.y - tengahMataKiri.y;
-                                    const selisihX = tengahMataKanan.x - tengahMataKiri.x;
-                                    const sudutMiring = (Math.atan2(selisihY, selisihX) * 180) / Math.PI;
-                                    const kepalaMiring = Math.abs(sudutMiring) > 8; // Toleransi maksimal 8 derajat
-                                    
-                                    // 3. CEK TOLEHAN (YAW) - Apakah menoleh ke kiri/kanan?
-                                    const titikHidungAtas = hidung[0]; // Titik pangkal hidung di antara mata
-                                    const jarakHidungKeKiri = Math.abs(titikHidungAtas.x - tengahMataKiri.x);
-                                    const jarakHidungKeKanan = Math.abs(titikHidungAtas.x - tengahMataKanan.x);
-                                    // Jika rasio jarak hidung ke mata kiri/kanan tidak seimbang, berarti dia menoleh
-                                    const rasioNoleh = Math.max(jarakHidungKeKiri, jarakHidungKeKanan) / Math.min(jarakHidungKeKiri, jarakHidungKeKanan);
-                                    const kepalaNoleh = rasioNoleh > 1.4; // Toleransi rasio
-
-                                    // ==========================================
-                                    // SISTEM FEEDBACK PINTAR (SUTRADARA AI)
-                                    // ==========================================
-                                    if (scoreAkurasi < 0.85) {
-                                        // Gagal kejernihan (buram/gelap)
-                                        btnRekam.innerHTML = `<i class="fa-solid fa-lightbulb text-amber-300 mr-2"></i> TERLALU GELAP / BURAM`;
-                                        btnRekam.className = "bg-slate-700 border border-amber-500/50 text-amber-400 font-bold py-2 px-6 rounded-lg shadow-lg";
-                                        enrollBuffer = 0; // Reset progres
-                                    } 
-                                    else if (kepalaMiring) {
-                                        // Gagal karena miring
-                                        btnRekam.innerHTML = `<i class="fa-solid fa-rotate-left text-rose-300 mr-2"></i> TEGAKKAN KEPALA ANDA`;
-                                        btnRekam.className = "bg-slate-700 border border-rose-500/50 text-rose-400 font-bold py-2 px-6 rounded-lg shadow-lg";
-                                        enrollBuffer = 0;
-                                    }
-                                    else if (kepalaNoleh) {
-                                        // Gagal karena menoleh
-                                        btnRekam.innerHTML = `<i class="fa-solid fa-arrows-left-right text-rose-300 mr-2"></i> TATAP LURUS KE KAMERA`;
-                                        btnRekam.className = "bg-slate-700 border border-rose-500/50 text-rose-400 font-bold py-2 px-6 rounded-lg shadow-lg";
-                                        enrollBuffer = 0;
-                                    }
-                                    else {
-                                        // SEMUA SYARAT TERPENUHI - LURUS & JERNIH! Mulai memotret.
-                                        enrollBuffer++;
-                                        let persen = Math.floor((enrollBuffer / 20) * 100); // Butuh 20 frame stabil (±2.5 detik)
-                                        if (persen > 100) persen = 100;
-                                        
-                                        btnRekam.innerHTML = `<i class="fa-solid fa-crosshairs fa-spin text-white mr-2"></i> TAHAN POSISI... ${persen}%`;
-                                        btnRekam.className = "bg-emerald-500 border border-emerald-400 text-white font-black py-2 px-6 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all scale-105";
-                                        
-                                        if (enrollBuffer >= 20) {
-                                            // SUKSES TERKAM: Jepret dan kirim ke server
-                                            kirimSidikWajahKePusat(enrollTargetId, sidikWajah);
-                                            isEnrolling = false; 
-                                            enrollBuffer = 0; 
-                                            
-                                            // Reset tombol ke keadaan awal
-                                            const inputEnroll = document.getElementById('input-enroll-id');
-                                            inputEnroll.value = "";
-                                            btnRekam.disabled = true;
-                                            btnRekam.className = "bg-slate-700 text-slate-500 font-bold py-2 px-6 rounded-lg shadow-lg cursor-not-allowed transition-all scale-100";
-                                            btnRekam.innerText = "REKAM WAJAH";
-                                        }
-                                    }
-                                    return; // Stop eksekusi agar tidak lanjut ke bawah
+                                    btnRekam.disabled = true;
+                                    btnRekam.className = "bg-slate-700 text-slate-500 font-bold py-2 px-6 rounded-lg transition-transform shadow-lg cursor-not-allowed";
+                                    btnRekam.innerText = "REKAM WAJAH";
+                                    return; 
                                 } 
                                 
                                 // PROSES PENGENALAN WAJAH HARIAN (Hanya Aktif di Mode Absen)
