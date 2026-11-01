@@ -16,8 +16,12 @@
             position: absolute; animation: scan 3s infinite linear;
         }
         @keyframes scan { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
-        /* Memastikan canvas face-api menumpuk pas di atas video */
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+        
+        /* Tombol Mode Aktif */
+        .mode-btn { transition: all 0.3s ease; }
+        .mode-active { background: rgba(16, 185, 129, 0.2); border-color: rgb(16, 185, 129); color: rgb(52, 211, 153); box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.2); }
+        .mode-inactive { background: rgba(30, 41, 59, 0.8); border-color: rgba(51, 65, 85, 0.5); color: rgb(148, 163, 184); }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-hidden">
@@ -29,9 +33,20 @@
             </div>
             <div>
                 <h1 class="text-2xl font-extrabold tracking-tight text-white">SMART GATEWAY</h1>
-                <p class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Universal Station (Auto Enroll)</p>
+                <p id="teks-mode-judul" class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Universal Station (Mode Absensi)</p>
             </div>
         </div>
+
+        <!-- SAKLAR MODE UTAMA -->
+        <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700/50 shadow-inner">
+            <button onclick="switchMode('absen')" id="btn-mode-absen" class="mode-btn mode-active px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
+                <i class="fa-solid fa-check-to-slot"></i> Absen Harian
+            </button>
+            <button onclick="switchMode('daftar')" id="btn-mode-daftar" class="mode-btn mode-inactive px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> Daftar Wajah
+            </button>
+        </div>
+
         <div class="flex items-center gap-5">
             <div class="text-right hidden md:block">
                 <p class="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Status AI</p>
@@ -39,7 +54,6 @@
                     <i class="fa-solid fa-brain"></i> Menunggu Modul...
                 </p>
             </div>
-            <!-- Tombol Full Screen Layar Penuh -->
             <button onclick="toggleFullScreenGateway()" title="Layar Penuh" class="bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white border border-slate-600 w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm">
                 <i id="fs-icon" class="fa-solid fa-expand text-lg"></i>
             </button>
@@ -51,24 +65,18 @@
         <section class="flex-[3] flex flex-col gap-4">
             <div class="bg-slate-800 rounded-2xl border border-slate-700 p-4 flex-1 flex flex-col relative shadow-2xl">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="font-bold text-slate-200"><i class="fa-solid fa-camera-viewfinder text-emerald-400 mr-2"></i> Pemindai Wajah & QR</h2>
+                    <h2 class="font-bold text-slate-200" id="teks-kamera-judul"><i class="fa-solid fa-camera-viewfinder text-emerald-400 mr-2"></i> Pemindai Wajah Harian</h2>
                     
-                    <!-- KOTAK INFO WAJAH TERDAFTAR (SEKARANG BISA DIKLIK) -->
-                    <button onclick="bukaModalDaftarWajah()" class="bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 text-xs font-bold py-2 px-4 rounded-full flex items-center gap-2 shadow-sm transition-all cursor-pointer hover:scale-105">
+                    <!-- KOTAK INFO WAJAH (Disembunyikan di Mode Absen, Muncul di Mode Daftar) -->
+                    <button id="btn-info-wajah" onclick="bukaModalDaftarWajah()" class="hidden bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 text-xs font-bold py-2 px-4 rounded-full items-center gap-2 shadow-sm transition-all cursor-pointer hover:scale-105">
                         <i class="fa-solid fa-users-viewfinder"></i>
                         <span id="info-wajah-terdaftar">0 Wajah Terdaftar</span>
                     </button>
                 </div>
                 
                 <div class="relative w-full h-[65%] bg-black rounded-xl overflow-hidden flex items-center justify-center border-2 border-slate-700">
-                    
-                    <!-- Wadah Kamera -->
                     <div id="videoFeed" class="absolute top-0 left-0 w-full h-full overflow-hidden"></div>
-                    
-                    <!-- Garis Pindai -->
                     <div class="scan-line hidden" id="scan-line-anim"></div>
-
-                    <!-- TOMBOL PEMANCING KAMERA -->
                     <div id="camera-loading" class="absolute z-30 flex flex-col items-center justify-center w-full h-full bg-slate-900/90">
                         <button onclick="mulaiSistem()" id="btn-start" class="bg-emerald-500 text-white px-8 py-4 rounded-xl font-extrabold shadow-lg shadow-emerald-500/30 mb-4 hover:scale-105 active:scale-95 transition-transform">
                             <i class="fa-solid fa-power-off mr-2"></i> NYALAKAN SISTEM
@@ -77,15 +85,21 @@
                     </div>
                 </div>
 
-                <!-- PANEL PENDAFTARAN WAJAH OTOMATIS (BARU) -->
-                <div class="mt-4 bg-slate-900 p-4 border border-blue-500/30 rounded-xl flex gap-3 items-center shadow-inner">
-                    <div class="bg-blue-500 w-10 h-10 rounded-lg flex items-center justify-center shadow-md">
+                <!-- PANEL PENDAFTARAN WAJAH (Disembunyikan di Mode Absen, Muncul di Mode Daftar) -->
+                <div id="panel-pendaftaran" class="hidden mt-4 bg-slate-900 p-4 border border-blue-500/30 rounded-xl gap-3 items-center shadow-inner">
+                    <div class="bg-blue-500 w-10 h-10 rounded-lg flex items-center justify-center shadow-md shrink-0">
                         <i class="fa-solid fa-qrcode text-white"></i>
                     </div>
-                    <input type="text" id="input-enroll-id" readonly placeholder="Scan QR siswa untuk mengaktifkan perekaman wajah..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-amber-400 font-bold focus:outline-none cursor-not-allowed">
-                    <button onclick="mulaiDaftarWajah()" id="btn-rekam" disabled class="bg-slate-700 text-slate-500 font-bold py-2 px-6 rounded-lg transition-transform shadow-lg cursor-not-allowed">
+                    <input type="text" id="input-enroll-id" readonly placeholder="Scan QR Siswa Baru untuk mengaktifkan tombol rekam..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-amber-400 font-bold focus:outline-none cursor-not-allowed">
+                    <button onclick="mulaiDaftarWajah()" id="btn-rekam" disabled class="bg-slate-700 text-slate-500 font-bold py-2 px-6 rounded-lg transition-transform shadow-lg cursor-not-allowed shrink-0">
                         REKAM WAJAH
                     </button>
+                </div>
+                
+                <!-- PESAN MODE ABSEN -->
+                <div id="pesan-mode-absen" class="mt-4 bg-emerald-900/20 p-4 border border-emerald-500/30 rounded-xl flex gap-3 items-center shadow-inner">
+                    <i class="fa-solid fa-circle-info text-emerald-500"></i>
+                    <p class="text-sm text-emerald-400 font-semibold">Mode Absensi Aktif. Wajah akan otomatis direkam sebagai kehadiran. Jika AI gagal, gunakan QR Code.</p>
                 </div>
             </div>
         </section>
@@ -102,9 +116,7 @@
         </section>
     </main>
 
-    <!-- Library 1: QR Code -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- Library 2: Face API (Otak AI) -->
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 
 <script>
@@ -116,29 +128,67 @@
         const scanLine = document.getElementById('scan-line-anim');
         const aiStatus = document.getElementById('ai-status');
         
+        // VARIABEL STATE SISTEM
+        let currentMode = 'absen'; // 'absen' atau 'daftar'
         let scanCount = 0;
         let isEnrolling = false;
         let enrollTargetId = "";
         let faceMatcher = null; 
-let globalDataWajah = [];
+        let globalDataWajah = [];
         const URL_GATEWAY_PUSAT = "https://script.google.com/macros/s/AKfycbzcHLMR_oS83RcSUucJ5PWEkD7MxIAkNf_vQ-tDOHaUeJ-AelGf0KmPZTCW9EGyEHxJ/exec";
 
-       // DESAIN BARU 3: LOG KEHADIRAN DINAMIS (ANTI DATA HILANG / OFFLINE SENSOR)
+        // ==========================================
+        // FUNGSI GANTI MODE (ABSEN VS DAFTAR)
+        // ==========================================
+        function switchMode(mode) {
+            currentMode = mode;
+            const btnAbsen = document.getElementById('btn-mode-absen');
+            const btnDaftar = document.getElementById('btn-mode-daftar');
+            const judulKamera = document.getElementById('teks-kamera-judul');
+            const teksJudul = document.getElementById('teks-mode-judul');
+            
+            const btnInfoWajah = document.getElementById('btn-info-wajah');
+            const panelPendaftaran = document.getElementById('panel-pendaftaran');
+            const pesanAbsen = document.getElementById('pesan-mode-absen');
+            
+            if (mode === 'absen') {
+                btnAbsen.className = "mode-btn mode-active px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2";
+                btnDaftar.className = "mode-btn mode-inactive px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-700/50";
+                judulKamera.innerHTML = '<i class="fa-solid fa-camera-viewfinder text-emerald-400 mr-2"></i> Pemindai Wajah Harian';
+                teksJudul.innerText = "Universal Station (Mode Absensi)";
+                teksJudul.className = "text-emerald-400 font-semibold text-sm tracking-widest uppercase";
+                
+                btnInfoWajah.style.display = 'none';
+                panelPendaftaran.style.display = 'none';
+                pesanAbsen.style.display = 'flex';
+                
+            } else if (mode === 'daftar') {
+                btnDaftar.className = "mode-btn mode-active px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 !border-blue-500 !bg-blue-500/20 !text-blue-400 !shadow-[inset_0_0_10px_rgba(59,130,246,0.2)]";
+                btnAbsen.className = "mode-btn mode-inactive px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-700/50";
+                judulKamera.innerHTML = '<i class="fa-solid fa-user-plus text-blue-400 mr-2"></i> Mode Pendaftaran Wajah Baru';
+                teksJudul.innerText = "Universal Station (Mode Pendaftaran)";
+                teksJudul.className = "text-blue-400 font-semibold text-sm tracking-widest uppercase";
+                
+                btnInfoWajah.style.display = 'flex';
+                panelPendaftaran.style.display = 'flex';
+                pesanAbsen.style.display = 'none';
+            }
+        }
+
+        // ==========================================
+        // LOG KEHADIRAN & AUDIO
+        // ==========================================
         async function tambahLogKehadiran(qrData, metode = "QR") {
             const sekarang = new Date();
             const waktu = sekarang.getHours().toString().padStart(2, '0') + ':' + sekarang.getMinutes().toString().padStart(2, '0');
-            
             const parts = qrData.split('|');
             const nis = parts[0] || qrData;
             const nama = parts[1] || "Siswa";
             const kelas = parts[2] || "-";
-
-            // Buat ID unik untuk elemen log ini agar bisa dilacak statusnya
             const logId = 'log_' + Date.now();
 
             const logItem = document.createElement('div');
             logItem.id = logId;
-            // TAHAP 1: PENDING (Warna Kuning/Amber & Ikon Loading)
             logItem.className = "bg-slate-700/50 border border-amber-500/30 rounded-xl p-4 flex items-center gap-4 transform transition-all duration-300 shadow-md fade-in";
             logItem.innerHTML = `
                 <div id="icon_${logId}" class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold shadow-lg shadow-amber-500/30"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>
@@ -153,19 +203,10 @@ let globalDataWajah = [];
             `;
             logContainer.insertBefore(logItem, logContainer.firstChild);
 
-            // Bunyi scan masuk
-            try {
-                new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(e=>console.log(e));
-            } catch(e) {}
+            try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(e=>console.log(e)); } catch(e) {}
 
             try {
-                // Tembak data ke Server Pusat
-                await fetch(`${URL_GATEWAY_PUSAT}?action=insertLog&qr=${encodeURIComponent(nis)}&metode=${encodeURIComponent(metode)}`, {
-                    method: 'GET',
-                    mode: 'no-cors'
-                });
-                
-                // TAHAP 2: SUKSES (Ubah jadi Centang Hijau)
+                await fetch(`${URL_GATEWAY_PUSAT}?action=insertLog&qr=${encodeURIComponent(nis)}&metode=${encodeURIComponent(metode)}`, { method: 'GET', mode: 'no-cors' });
                 const logEl = document.getElementById(logId);
                 if(logEl) {
                     logEl.className = "bg-slate-700/50 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-4 transform transition-all duration-300 shadow-md fade-in";
@@ -175,13 +216,9 @@ let globalDataWajah = [];
                     document.getElementById(`teks_${logId}`).innerHTML = `NIS: ${nis} &nbsp;|&nbsp; KELAS: ${kelas}`;
                     document.getElementById(`waktu_${logId}`).className = "text-emerald-400 font-black text-lg";
                 }
-                
                 scanCount++;
                 totalScan.textContent = `${scanCount} Hadir`;
             } catch (error) {
-                console.error("Gagal kirim background:", error);
-                
-                // TAHAP 3: GAGAL / OFFLINE (Ubah jadi Peringatan Merah)
                 const logEl = document.getElementById(logId);
                 if(logEl) {
                     logEl.className = "bg-rose-950/40 border border-rose-500/50 rounded-xl p-4 flex items-center gap-4 transform transition-all duration-300 shadow-md fade-in";
@@ -191,9 +228,8 @@ let globalDataWajah = [];
                     document.getElementById(`teks_${logId}`).innerHTML = `<i class="fa-solid fa-wifi mr-1"></i> GAGAL CLOUD (OFFLINE)`;
                     document.getElementById(`waktu_${logId}`).className = "text-rose-500 font-black text-lg opacity-50 line-through";
                     
-                    // Bebaskan anak tersebut dari memori agar dia bisa absen ulang!
                     const nowLocal = new Date();
-const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).padStart(2, '0') + '-' + String(nowLocal.getDate()).padStart(2, '0');
+                    const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).padStart(2, '0') + '-' + String(nowLocal.getDate()).padStart(2, '0');
                     let logHarian = JSON.parse(localStorage.getItem('gateway_absen_' + hariIni) || '[]');
                     logHarian = logHarian.filter(id => id !== nis);
                     localStorage.setItem('gateway_absen_' + hariIni, JSON.stringify(logHarian));
@@ -201,27 +237,19 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
             }
         }
         
-     // PENGAMANAN SISTEM AUDIO (Mencegah Crash Browser jika banyak yang absen ganda)
         let gatewayAudioCtx = null;
         function getGatewayAudioCtx() {
-            if (!gatewayAudioCtx) {
-                gatewayAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (gatewayAudioCtx.state === 'suspended') {
-                gatewayAudioCtx.resume();
-            }
+            if (!gatewayAudioCtx) gatewayAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (gatewayAudioCtx.state === 'suspended') gatewayAudioCtx.resume();
             return gatewayAudioCtx;
         }
 
-        // DESAIN BARU: POP-UP GLASSMORPHISM ELEGAN ANTI-BLOKIR LAYAR
         function tolakAbsenGanda(qrData) {
             const parts = qrData.split('|');
             const nama = parts[1] || "Siswa";
-            
             const oldToast = document.getElementById('toast-ganda');
             if(oldToast) oldToast.remove();
 
-            // Desain transparan yang melayang elegan dari atas layar
             const toast = document.createElement('div');
             toast.id = 'toast-ganda';
             toast.className = "fixed top-6 left-1/2 transform -translate-x-1/2 bg-slate-950/80 backdrop-blur-xl border border-rose-500/50 text-white px-6 py-4 rounded-3xl shadow-[0_15px_40px_rgba(225,29,72,0.4)] z-[9999] flex items-center gap-4 transition-all duration-500 translate-y-[-150%] opacity-0";
@@ -236,13 +264,11 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
             `;
             document.body.appendChild(toast);
             
-            // Animasi masuk meluncur dari atas
             requestAnimationFrame(() => {
                 toast.classList.remove('translate-y-[-150%]', 'opacity-0');
                 toast.classList.add('translate-y-0', 'opacity-100');
             });
             
-            // Pemutaran Suara Bip Aman
             try {
                 const ctx = getGatewayAudioCtx();
                 const osc = ctx.createOscillator();
@@ -257,7 +283,6 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                 osc.stop(ctx.currentTime + 0.3);
             } catch(e) {}
 
-            // Animasi meluncur keluar (hilang)
             setTimeout(() => { 
                 toast.classList.remove('translate-y-0', 'opacity-100');
                 toast.classList.add('translate-y-[-150%]', 'opacity-0');
@@ -265,6 +290,9 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
             }, 3000);
         }
 
+        // ==========================================
+        // FUNGSI PENDAFTARAN WAJAH
+        // ==========================================
         function mulaiDaftarWajah() {
             const inputId = document.getElementById('input-enroll-id').value;
             if(!inputId) return;
@@ -281,71 +309,52 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
             const dataString = JSON.stringify(arrayWajah);
             
             try {
-                tambahLogKehadiran(idSiswa, "DAFTAR WAJAH");
-                await fetch(`${URL_GATEWAY_PUSAT}?action=enrollFace&id=${encodeURIComponent(idSiswa)}&faceData=${encodeURIComponent(dataString)}`, {
-                    method: 'GET',
-                    mode: 'no-cors'
-                });
+                await fetch(`${URL_GATEWAY_PUSAT}?action=enrollFace&id=${encodeURIComponent(idSiswa)}&faceData=${encodeURIComponent(dataString)}`, { method: 'GET', mode: 'no-cors' });
                 alert(`Mantap! Sidik Wajah untuk ID: ${idSiswa} berhasil dikirim ke Pusat!`);
+                
+                // Minta sistem refresh memori wajah terbaru dari server
+                await muatDaftarWajah();
             } catch (err) {
                 alert("Gagal mengirim data wajah ke Pusat. Cek koneksi internet!");
             }
         }
 
+        // ==========================================
+        // MANAJEMEN DATABASE WAJAH
+        // ==========================================
         async function muatDaftarWajah() {
             try {
-                document.getElementById('info-wajah-terdaftar').innerText = "Memuat database...";
+                const infoWajah = document.getElementById('info-wajah-terdaftar');
+                infoWajah.innerText = "Memuat database...";
                 
-                const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces`, {
-                    method: 'GET',
-                    redirect: "follow"
-                });
+                const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces`, { method: 'GET', redirect: "follow" });
                 const dataWajah = await response.json();
                 globalDataWajah = dataWajah;
+                
                 if (dataWajah && dataWajah.length > 0) {
                     const labeledDescriptors = [];
-                    
                     for (const data of dataWajah) {
                         if(data.descriptor) {
                             const descriptorArray = new Float32Array(JSON.parse(data.descriptor));
-                            const labeledDescriptor = new faceapi.LabeledFaceDescriptors(String(data.id), [descriptorArray]);
-                            labeledDescriptors.push(labeledDescriptor);
+                            labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(String(data.id), [descriptorArray]));
                         }
                     }
-                    
                     if(labeledDescriptors.length > 0) {
                         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.35);
-                        document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> ${labeledDescriptors.length} Wajah Terdaftar`;
+                        infoWajah.innerHTML = `${labeledDescriptors.length} Wajah Terdaftar`;
                     } else {
-                        document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
+                        infoWajah.innerHTML = `0 Wajah Terdaftar`;
                     }
                 } else {
-                    document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
+                    infoWajah.innerHTML = `0 Wajah Terdaftar`;
                 }
             } catch (error) {
-                console.log("Info Database:", error);
-                document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
-            }
-        }
-
-        async function hapusSemuaWajahLokal() {
-            if (confirm("AWAS! Yakin ingin menghapus seluruh data wajah dari mesin gerbang & server pusat? Anda harus mendaftarkan ulang wajah siswa dari awal.")) {
-                try {
-                    await fetch(`${URL_GATEWAY_PUSAT}?action=deleteFaces`, { method: 'GET', mode: 'no-cors' });
-                    faceMatcher = null;
-                    document.getElementById('info-wajah-terdaftar').innerHTML = `<i class="fa-solid fa-users-viewfinder"></i> 0 Wajah Terdaftar`;
-                    alert("Seluruh data sidik wajah berhasil dihapus dari sistem!");
-                } catch (e) {
-                    alert("Gagal menghapus data wajah.");
-                }
+                document.getElementById('info-wajah-terdaftar').innerHTML = `0 Wajah Terdaftar`;
             }
         }
         
-// Fungsi Membuka Daftar Wajah yang Terdaftar (Aman & Tidak Tertutup Sistem)
         function bukaModalDaftarWajah() {
             let modal = document.getElementById('modal-list-wajah');
-            
-            // Jika modal belum ada, buat baru
             if(!modal) {
                 const modalHtml = `
                 <div id="modal-list-wajah" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 fade-in">
@@ -353,18 +362,15 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                         <button onclick="document.getElementById('modal-list-wajah').style.display='none'" class="absolute top-5 right-5 text-slate-500 hover:text-rose-500 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
                         <h3 class="text-xl font-black text-white mb-2"><i class="fa-solid fa-users-viewfinder text-blue-400 mr-2"></i>Kelola Wajah Terdaftar</h3>
                         <p class="text-xs text-slate-400 mb-5 border-b border-slate-700 pb-4">Lihat daftar siswa dan hapus pendaftaran wajahnya jika terjadi kesalahan.</p>
-                        <div id="modal-list-content" class="overflow-y-auto pr-2 flex-1">
-                            <!-- Konten List Akan Dimuat Di Sini -->
-                        </div>
+                        <div id="modal-list-content" class="overflow-y-auto pr-2 flex-1"></div>
                     </div>
                 </div>`;
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
                 modal = document.getElementById('modal-list-wajah');
             } else {
-                modal.style.display = 'flex'; // Tampilkan kembali jika sudah ada
+                modal.style.display = 'flex';
             }
 
-            // Render isi list wajah
             const contentContainer = document.getElementById('modal-list-content');
             if(!globalDataWajah || globalDataWajah.length === 0) {
                 contentContainer.innerHTML = `<p class="text-center text-slate-400 text-sm py-10">Belum ada data wajah terdaftar atau sedang dimuat...</p>`;
@@ -389,21 +395,13 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
             }
         }
         
-                // Fungsi Menghapus Satu Wajah Spesifik ke Server
         async function hapusWajahSatu(idHapus, btnElement) {
             if(confirm("Yakin ingin menghapus wajah ini dari sistem? Siswa harus daftar ulang wajahnya.")) {
                 btnElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
                 try {
-                    // Panggil ke server pusat untuk hapus 1 ID spesifik
-                    await fetch(`${URL_GATEWAY_PUSAT}?action=deleteFaceSingle&id=${encodeURIComponent(idHapus)}`, {
-                        method: 'GET',
-                        mode: 'no-cors'
-                    });
-                    
+                    await fetch(`${URL_GATEWAY_PUSAT}?action=deleteFaceSingle&id=${encodeURIComponent(idHapus)}`, { method: 'GET', mode: 'no-cors' });
                     alert("Berhasil dihapus dari server pusat!");
                     document.getElementById('modal-list-wajah').remove();
-                    
-                    // Muat ulang daftar wajah agar AI ter-update tanpa wajah yang baru dihapus
                     await muatDaftarWajah();
                 } catch(e) {
                     alert("Gagal menghapus. Periksa internet.");
@@ -411,6 +409,10 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                 }
             }
         }
+
+        // ==========================================
+        // MESIN AI & QR UTAMA
+        // ==========================================
         async function mulaiSistem() {
             btnStart.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Menginisiasi AI...`;
             btnStart.disabled = true;
@@ -434,16 +436,35 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                         if (!window.lastScanned || window.lastScanned !== decodedText) {
                             window.lastScanned = decodedText;
                             
-                            const inputEnroll = document.getElementById('input-enroll-id');
-                            if (inputEnroll) {
-                                inputEnroll.value = decodedText;
-                                const btnRekam = document.getElementById('btn-rekam');
-                                btnRekam.disabled = false;
-                                btnRekam.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30 cursor-pointer";
-                                btnRekam.innerText = "REKAM WAJAH";
+                            // LOGIKA PINTAR QR BERDASARKAN MODE
+                            if (currentMode === 'daftar') {
+                                // MODE DAFTAR: QR hanya buka gembok tombol Rekam Wajah (Tidak Absen)
+                                const inputEnroll = document.getElementById('input-enroll-id');
+                                if (inputEnroll) {
+                                    inputEnroll.value = decodedText;
+                                    const btnRekam = document.getElementById('btn-rekam');
+                                    btnRekam.disabled = false;
+                                    btnRekam.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30 cursor-pointer";
+                                    btnRekam.innerText = "REKAM WAJAH";
+                                    
+                                    try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e){}
+                                }
+                            } else {
+                                // MODE ABSEN: QR berfungsi untuk mencatat kehadiran
+                                const nowLocal = new Date();
+                                const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).padStart(2, '0') + '-' + String(nowLocal.getDate()).padStart(2, '0');
+                                let logHarian = JSON.parse(localStorage.getItem('gateway_absen_' + hariIni) || '[]');
+                                const nis = decodedText.split('|')[0];
+                                
+                                if (logHarian.includes(nis)) {
+                                    tolakAbsenGanda(decodedText);
+                                } else {
+                                    logHarian.push(nis);
+                                    localStorage.setItem('gateway_absen_' + hariIni, JSON.stringify(logHarian));
+                                    tambahLogKehadiran(decodedText, "QR");
+                                }
                             }
 
-                            tambahLogKehadiran(decodedText, "QR");
                             setTimeout(() => { window.lastScanned = null; }, 3000);
                         }
                     },
@@ -461,8 +482,7 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                         const displaySize = { width: videoEl.videoWidth, height: videoEl.videoHeight };
                         faceapi.matchDimensions(canvas, displaySize);
 
-                       // IDE BERLIAN: BUFFER MEMORI WAJAH
-                        let bufferWajah = {}; // Menyimpan hitungan wajah yang tampil
+                        let bufferWajah = {}; 
                         let wajahTerkonfirmasiTerakhir = ""; 
                         
                         setInterval(async () => {
@@ -477,7 +497,8 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                             if (detections.length > 0) {
                                 const sidikWajah = detections[0].descriptor;
 
-                                if (isEnrolling) {
+                                // JIKA SEDANG PROSES MEREKAM WAJAH BARU
+                                if (isEnrolling && currentMode === 'daftar') {
                                     kirimSidikWajahKePusat(enrollTargetId, sidikWajah);
                                     isEnrolling = false; 
                                     
@@ -487,33 +508,27 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                                     btnRekam.disabled = true;
                                     btnRekam.className = "bg-slate-700 text-slate-500 font-bold py-2 px-6 rounded-lg transition-transform shadow-lg cursor-not-allowed";
                                     btnRekam.innerText = "REKAM WAJAH";
-                                    return; // Stop eksekusi agar tidak masuk ke proses absen
+                                    return; 
                                 } 
                                 
-                                if (faceMatcher && !window.faceScanned) {
+                                // PROSES PENGENALAN WAJAH HARIAN (Hanya Aktif di Mode Absen)
+                                if (currentMode === 'absen' && faceMatcher && !window.faceScanned) {
                                     const bestMatch = faceMatcher.findBestMatch(sidikWajah);
                                     
                                     if (bestMatch.label !== "unknown") {
                                         const labelMentah = bestMatch.label;
-                                        
-                                        // 1. CEK ANTI-NYANGKUT (Orang yang sama berdiri terus di depan kamera)
-                                        if (labelMentah === wajahTerkonfirmasiTerakhir) {
-                                            return; // Abaikan, biarkan orangnya pergi dulu
-                                        }
+                                        if (labelMentah === wajahTerkonfirmasiTerakhir) return; 
 
-                                        // 2. SISTEM BUFFER (Menghapus False Positive)
-                                        // Wajah harus terdeteksi minimal 3 kali berturut-turut
                                         bufferWajah[labelMentah] = (bufferWajah[labelMentah] || 0) + 1;
                                         
                                         if (bufferWajah[labelMentah] >= 3) {
-                                            // Wajah sudah valid 100%!
                                             window.faceScanned = true;
                                             wajahTerkonfirmasiTerakhir = labelMentah; 
-                                            bufferWajah = {}; // Bersihkan buffer
+                                            bufferWajah = {}; 
 
                                             const nisSiswa = labelMentah.split('|')[0];
-                                          const nowLocal = new Date();
-const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).padStart(2, '0') + '-' + String(nowLocal.getDate()).padStart(2, '0');
+                                            const nowLocal = new Date();
+                                            const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).padStart(2, '0') + '-' + String(nowLocal.getDate()).padStart(2, '0');
                                             let logHarian = JSON.parse(localStorage.getItem('gateway_absen_' + hariIni) || '[]');
                                             
                                             if (logHarian.includes(nisSiswa)) {
@@ -521,30 +536,22 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                                             } else {
                                                 logHarian.push(nisSiswa);
                                                 localStorage.setItem('gateway_absen_' + hariIni, JSON.stringify(logHarian));
-                                                tambahLogKehadiran(labelMentah, "Face AI");
+                                                tambahLogKehadiran(labelMentah, "DAFTAR WAJAH");
                                             }
 
-                                            // Cooldown absen
-                                            setTimeout(() => { 
-                                                window.faceScanned = false; 
-                                            }, 4000);
+                                            setTimeout(() => { window.faceScanned = false; }, 4000);
                                         }
                                     } else {
-                                        // Jika mendeteksi wajah tak dikenal, bersihkan buffer agar tidak nyangkut
                                         bufferWajah = {};
-                                        // Reset juga wajah terakhir agar orang sebelumnya bisa absen lagi kalau perlu (setelaH
                                         setTimeout(() => { wajahTerkonfirmasiTerakhir = ""; }, 5000); 
                                     }
                                 }
                             } else {
-                                // Jika kamera tidak melihat wajah sama sekali (kosong)
-                                // Segera bersihkan ingatan wajah terakhir, tandanya orangnya sudah pergi
                                 setTimeout(() => { wajahTerkonfirmasiTerakhir = ""; }, 2000);
                             }
                         }, 150);
                     });
                 }
-
             } catch (err) {
                 btnStart.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> COBA LAGI`;
                 btnStart.disabled = false;
@@ -553,11 +560,9 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
             }
         }
         
-        // Fungsi Toggle Full Screen (Layar Penuh)
         function toggleFullScreenGateway() {
             const icon = document.getElementById('fs-icon');
             if (!document.fullscreenElement) {
-                // Masuk mode layar penuh
                 const docEl = document.documentElement;
                 const req = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
                 if(req) {
@@ -565,7 +570,6 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
                     if (icon) icon.className = "fa-solid fa-compress text-lg";
                 }
             } else {
-                // Keluar mode layar penuh
                 const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
                 if(exit) {
                     exit.call(document).catch(err => console.log(err));
@@ -574,5 +578,5 @@ const hariIni = nowLocal.getFullYear() + '-' + String(nowLocal.getMonth() + 1).p
             }
         }
     </script>
-    </body>
+</body>
 </html>
