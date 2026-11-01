@@ -531,6 +531,40 @@
                                     const kepalaNoleh = rasioNoleh > 1.4; // Toleransi rasio
 
                                     // ==========================================
+                                   // ========================================================
+                                // JIKA SEDANG PROSES MEREKAM WAJAH BARU (MODE DAFTAR - LEVEL BANKING)
+                                // ========================================================
+                                if (isEnrolling && currentMode === 'daftar') {
+                                    const btnRekam = document.getElementById('btn-rekam');
+                                    const landmarks = deteksiPertama.landmarks;
+                                    
+                                    // 1. Mengambil titik koordinat mata dan hidung
+                                    const mataKiri = landmarks.getLeftEye();
+                                    const mataKanan = landmarks.getRightEye();
+                                    const hidung = landmarks.getNose();
+                                    
+                                    // Mencari titik tengah mata
+                                    const tengahMataKiri = mataKiri.reduce((acc, pt) => ({x: acc.x + pt.x, y: acc.y + pt.y}), {x:0, y:0});
+                                    tengahMataKiri.x /= mataKiri.length; tengahMataKiri.y /= mataKiri.length;
+                                    
+                                    const tengahMataKanan = mataKanan.reduce((acc, pt) => ({x: acc.x + pt.x, y: acc.y + pt.y}), {x:0, y:0});
+                                    tengahMataKanan.x /= mataKanan.length; tengahMataKanan.y /= mataKanan.length;
+
+                                    // 2. CEK KEMIRINGAN (ROLL) - Apakah kepala miring ke bahu?
+                                    const selisihY = tengahMataKanan.y - tengahMataKiri.y;
+                                    const selisihX = tengahMataKanan.x - tengahMataKiri.x;
+                                    const sudutMiring = (Math.atan2(selisihY, selisihX) * 180) / Math.PI;
+                                    const kepalaMiring = Math.abs(sudutMiring) > 8; // Toleransi maksimal 8 derajat
+                                    
+                                    // 3. CEK TOLEHAN (YAW) - Apakah menoleh ke kiri/kanan?
+                                    const titikHidungAtas = hidung[0]; // Titik pangkal hidung di antara mata
+                                    const jarakHidungKeKiri = Math.abs(titikHidungAtas.x - tengahMataKiri.x);
+                                    const jarakHidungKeKanan = Math.abs(titikHidungAtas.x - tengahMataKanan.x);
+                                    // Jika rasio jarak hidung ke mata kiri/kanan tidak seimbang, berarti dia menoleh
+                                    const rasioNoleh = Math.max(jarakHidungKeKiri, jarakHidungKeKanan) / Math.min(jarakHidungKeKiri, jarakHidungKeKanan);
+                                    const kepalaNoleh = rasioNoleh > 1.4; // Toleransi rasio
+
+                                    // ==========================================
                                     // SISTEM FEEDBACK PINTAR (SUTRADARA AI)
                                     // ==========================================
                                     if (scoreAkurasi < 0.85) {
@@ -575,7 +609,7 @@
                                         }
                                     }
                                     return; // Stop eksekusi agar tidak lanjut ke bawah
-                                } 
+                                }
                                 
                                 // PROSES PENGENALAN WAJAH HARIAN (Hanya Aktif di Mode Absen)
                                 if (currentMode === 'absen' && faceMatcher && !window.faceScanned) {
