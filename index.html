@@ -145,7 +145,27 @@
         let faceMatcher = null; 
         let globalDataWajah = [];
         const URL_GATEWAY_PUSAT = "https://script.google.com/macros/s/AKfycbzcHLMR_oS83RcSUucJ5PWEkD7MxIAkNf_vQ-tDOHaUeJ-AelGf0KmPZTCW9EGyEHxJ/exec";
+// 1. TANGKAP IDENTITAS RUANG KERJA DARI URL SMART TEACHER
+     const urlParams = new URLSearchParams(window.location.search);
+     let GATEWAY_NPSN = urlParams.get('npsn');
+     let GATEWAY_NAMA = urlParams.get('nama');
 
+     // Jika Gateway dibuka langsung tanpa lewat Smart Teacher (NPSN kosong)
+     if (!GATEWAY_NPSN || GATEWAY_NPSN === 'KOSONG' || GATEWAY_NPSN.trim() === "") {
+         GATEWAY_NPSN = prompt("Sistem Keamanan: Masukkan Kode Ruang Kerja / NPSN Anda untuk memuat database wajah yang benar:");
+         if (!GATEWAY_NPSN) {
+             alert("Peringatan: Kode Ruang Kerja wajib diisi agar data tidak bercampur dengan sekolah lain!");
+         }
+     }
+
+     // 2. TAMPILKAN NAMA RUANG KERJA DI LAYAR GATEWAY
+     document.addEventListener('DOMContentLoaded', () => {
+         const judulHeader = document.querySelector('h1');
+         if (judulHeader && GATEWAY_NAMA) {
+             // Mengubah judul "SMART GATEWAY" menjadi "GATEWAY: Nama Ruang Kerja"
+             judulHeader.innerHTML = `GATEWAY <span class="text-emerald-400 text-sm border border-emerald-500/50 bg-emerald-900/30 px-2 py-1 rounded-lg ml-2">${GATEWAY_NAMA.replace(/_/g, ' ')}</span>`;
+         }
+     });
         // ==========================================
         // FUNGSI GANTI MODE (ABSEN VS DAFTAR)
         // ==========================================
@@ -318,7 +338,7 @@
             const dataString = JSON.stringify(arrayWajah);
             
             try {
-                await fetch(`${URL_GATEWAY_PUSAT}?action=enrollFace&id=${encodeURIComponent(idSiswa)}&faceData=${encodeURIComponent(dataString)}`, { method: 'GET', mode: 'no-cors' });
+               await fetch(`${URL_GATEWAY_PUSAT}?action=enrollFace&id=${encodeURIComponent(idSiswa)}&npsn=${encodeURIComponent(GATEWAY_NPSN)}&faceData=${encodeURIComponent(dataString)}`, { method: 'GET', mode: 'no-cors' });
                 alert(`Mantap! Sidik Wajah untuk ID: ${idSiswa} berhasil dikirim ke Pusat!`);
                 
                 // Minta sistem refresh memori wajah terbaru dari server
@@ -336,7 +356,7 @@
                 const infoWajah = document.getElementById('info-wajah-terdaftar');
                 infoWajah.innerText = "Memuat database...";
                 
-                const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces`, { method: 'GET', redirect: "follow" });
+              const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces&npsn=${encodeURIComponent(GATEWAY_NPSN)}`, { method: 'GET', redirect: "follow" });
                 const dataWajah = await response.json();
                 globalDataWajah = dataWajah;
                 
@@ -408,7 +428,7 @@
             if(confirm("Yakin ingin menghapus wajah ini dari sistem? Siswa harus daftar ulang wajahnya.")) {
                 btnElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
                 try {
-                    await fetch(`${URL_GATEWAY_PUSAT}?action=deleteFaceSingle&id=${encodeURIComponent(idHapus)}`, { method: 'GET', mode: 'no-cors' });
+                    await fetch(`${URL_GATEWAY_PUSAT}?action=deleteFaceSingle&id=${encodeURIComponent(idHapus)}&npsn=${encodeURIComponent(GATEWAY_NPSN)}`, { method: 'GET', mode: 'no-cors' });
                     alert("Berhasil dihapus dari server pusat!");
                     document.getElementById('modal-list-wajah').remove();
                     await muatDaftarWajah();
