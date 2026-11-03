@@ -1,6 +1,6 @@
 {
   "name": "Smart Gateway Station",
-  "short_name": "Gateway",
+  "short_name": "Smart Gateway",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
