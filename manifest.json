@@ -7,16 +7,20 @@
   "theme_color": "#10b981",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/192/4140/4140788.png",
-      "sizes": "192x192",
+      "src": "https://anassamudra78-sudo.github.io/Gateway-Station/logo-absen.png",
+      "sizes": "any",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/4140/4140788.png",
+      "src": "https://anassamudra78-sudo.github.io/Gateway-Station/logo-absen.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://anassamudra78-sudo.github.io/Gateway-Station/logo-absen.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
