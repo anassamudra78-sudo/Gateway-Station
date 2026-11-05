@@ -233,7 +233,8 @@
             logContainer.insertBefore(logItem, logContainer.firstChild);
 
             try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(e=>console.log(e)); } catch(e) {}
-
+// PANGGIL NAMA SISWA
+            panggilNamaSiswa(nama);
             try {
                 await fetch(`${URL_GATEWAY_PUSAT}?action=insertLog&qr=${encodeURIComponent(nis)}&metode=${encodeURIComponent(metode)}`, { method: 'GET', mode: 'no-cors' });
                 const logEl = document.getElementById(logId);
@@ -604,6 +605,35 @@
                     exit.call(document).catch(err => console.log(err));
                     if (icon) icon.className = "fa-solid fa-expand text-lg";
                 }
+            }
+        }
+    // ==========================================
+        // MESIN SUARA PANGGIL NAMA (CUSTOM TUNING)
+        // ==========================================
+        function panggilNamaSiswa(namaLengkap) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.getVoices(); 
+                window.speechSynthesis.cancel(); 
+                
+                let namaPanggilan = namaLengkap;
+                if(namaLengkap && namaLengkap.includes(' ')) {
+                    namaPanggilan = namaLengkap.split(' ')[0]; // Ambil kata pertama saja
+                }
+                
+                let suaraAI = new SpeechSynthesisUtterance(namaPanggilan);
+                suaraAI.lang = 'id-ID';
+                
+                let daftarSuara = window.speechSynthesis.getVoices();
+                let suaraIndo = daftarSuara.find(suara => suara.lang === 'id-ID' || suara.lang === 'id_ID');
+                if (suaraIndo) {
+                    suaraAI.voice = suaraIndo;
+                }
+                
+                suaraAI.pitch = 1.3; 
+                suaraAI.rate = 0.85; 
+                suaraAI.volume = 1.0;
+
+                window.speechSynthesis.speak(suaraAI);
             }
         }
     </script>
