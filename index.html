@@ -400,11 +400,13 @@
                     } else {
                         infoWajah.innerHTML = `0 Wajah Terdaftar`;
                     }
-                } else {
+               } else {
                     infoWajah.innerHTML = `0 Wajah Terdaftar`;
+                    alert("Server merespon 0 data!\nNPSN terbaca: [" + GATEWAY_NPSN + "]");
                 }
             } catch (error) {
                 document.getElementById('info-wajah-terdaftar').innerHTML = `0 Wajah Terdaftar`;
+                alert("Error saat muat data:\n" + error.message + "\nNPSN terbaca: [" + GATEWAY_NPSN + "]");
             }
         }
         
