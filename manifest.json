@@ -1,7 +1,9 @@
 {
+  "id": "/Gateway-Station/",
   "name": "Smart Gateway Station",
   "short_name": "Smart Gateway",
-  "start_url": "./index.html",
+  "start_url": "/Gateway-Station/",
+  "scope": "/Gateway-Station/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#10b981",
