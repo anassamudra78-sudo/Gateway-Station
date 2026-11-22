@@ -382,7 +382,7 @@
                 const infoWajah = document.getElementById('info-wajah-terdaftar');
                 infoWajah.innerText = "Memuat database...";
                 
-              const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces&npsn=${encodeURIComponent(GATEWAY_NPSN)}`, { method: 'GET', redirect: "follow" });
+             const response = await fetch(`${URL_GATEWAY_PUSAT}?action=getFaces&npsn=${encodeURIComponent(GATEWAY_NPSN)}&t=${Date.now()}`, { method: 'GET', redirect: "follow", cache: "no-store" });
                 const dataWajah = await response.json();
                 globalDataWajah = dataWajah;
                 
@@ -402,11 +402,9 @@
                     }
                } else {
                     infoWajah.innerHTML = `0 Wajah Terdaftar`;
-                    alert("Server merespon 0 data!\nNPSN terbaca: [" + GATEWAY_NPSN + "]");
                 }
             } catch (error) {
                 document.getElementById('info-wajah-terdaftar').innerHTML = `0 Wajah Terdaftar`;
-                alert("Error saat muat data:\n" + error.message + "\nNPSN terbaca: [" + GATEWAY_NPSN + "]");
             }
         }
         
