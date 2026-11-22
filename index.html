@@ -30,23 +30,28 @@
         .mode-btn { transition: all 0.3s ease; }
         .mode-active { background: rgba(16, 185, 129, 0.2); border-color: rgb(16, 185, 129); color: rgb(52, 211, 153); box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.2); }
         .mode-inactive { background: rgba(30, 41, 59, 0.8); border-color: rgba(51, 65, 85, 0.5); color: rgb(148, 163, 184); }
+
+        /* Penyesuaian khusus layar HP tanpa mengubah Desktop/Tablet */
+        @media (max-width: 1023px) {
+            .mode-btn { flex: 1; justify-content: center; padding: 0.5rem 0.75rem !important; font-size: 0.75rem !important; }
+        }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-y-auto lg:overflow-hidden">
     
-    <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 py-4 px-8 flex justify-between items-center z-10 shadow-lg">
-        <div class="flex items-center gap-4">
-            <div class="bg-emerald-500 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                <i class="fa-solid fa-graduation-cap text-2xl text-white"></i>
+    <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 py-3 px-4 lg:py-4 lg:px-8 flex flex-wrap lg:flex-nowrap justify-between items-center gap-3 z-10 shadow-lg">
+        <div class="flex items-center gap-3 lg:gap-4">
+            <div class="bg-emerald-500 w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
+                <i class="fa-solid fa-graduation-cap text-xl lg:text-2xl text-white"></i>
             </div>
             <div>
-                <h1 class="text-2xl font-extrabold tracking-tight text-white">SMART GATEWAY</h1>
-                <p id="teks-mode-judul" class="text-emerald-400 font-semibold text-sm tracking-widest uppercase">Universal Station (Mode Absensi)</p>
+                <h1 class="text-lg lg:text-2xl font-extrabold tracking-tight text-white">SMART GATEWAY</h1>
+                <p id="teks-mode-judul" class="text-emerald-400 font-semibold text-[11px] lg:text-sm tracking-widest uppercase">Universal Station (Mode Absensi)</p>
             </div>
         </div>
 
         <!-- SAKLAR MODE UTAMA -->
-        <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700/50 shadow-inner">
+        <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700/50 shadow-inner order-3 lg:order-none w-full lg:w-auto">
             <button onclick="switchMode('absen')" id="btn-mode-absen" class="mode-btn mode-active px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
                 <i class="fa-solid fa-check-to-slot"></i> Absen Harian
             </button>
@@ -55,20 +60,20 @@
             </button>
         </div>
 
-        <div class="flex items-center gap-5">
+        <div class="flex items-center gap-3 lg:gap-5">
             <div class="text-right hidden md:block">
                 <p class="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Status AI</p>
                 <p id="ai-status" class="text-amber-400 font-bold text-sm flex items-center justify-end gap-2">
                     <i class="fa-solid fa-brain"></i> Menunggu Modul...
                 </p>
             </div>
-            <button onclick="toggleFullScreenGateway()" title="Layar Penuh" class="bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white border border-slate-600 w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm">
-                <i id="fs-icon" class="fa-solid fa-expand text-lg"></i>
+            <button onclick="toggleFullScreenGateway()" title="Layar Penuh" class="bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white border border-slate-600 w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center transition-all shadow-sm">
+                <i id="fs-icon" class="fa-solid fa-expand text-base lg:text-lg"></i>
             </button>
         </div>
     </header>
 
-    <main class="flex-1 flex p-6 gap-6 h-full">
+    <main class="flex-1 flex flex-col lg:flex-row p-3 lg:p-6 gap-4 lg:gap-6 h-full">
         <!-- AREA KAMERA -->
         <section class="flex-[3] flex flex-col gap-4">
             <div class="bg-slate-800 rounded-2xl border border-slate-700 p-4 flex-1 flex flex-col relative shadow-2xl">
@@ -82,10 +87,13 @@
                     </button>
                 </div>
                 
-               <!-- PERBAIKAN: Mengganti h-[65%] dengan aspect-video dan max-h-[50vh] agar kamera tidak memanjang -->
-<div class="relative w-full aspect-video max-h-[50vh] bg-black rounded-xl overflow-hidden flex items-center justify-center border-2 border-slate-700 shrink-0">
+               <!-- PERBAIKAN: Responsif 4:3 di HP, tetap aspect-video & max-h-[50vh] di Desktop/Tablet -->
+<div class="relative w-full aspect-[4/3] lg:aspect-video max-h-[55vh] lg:max-h-[50vh] bg-black rounded-xl overflow-hidden flex items-center justify-center border-2 border-slate-700 shrink-0">
                     <div id="videoFeed" class="absolute top-0 left-0 w-full h-full overflow-hidden"></div>
                     <div class="scan-line hidden" id="scan-line-anim"></div>
+    <button id="btn-flip-cam" onclick="gantiKamera()" title="Ganti Kamera Depan/Belakang" class="hidden absolute top-3 right-3 z-30 bg-slate-900/70 hover:bg-slate-800 text-white border border-slate-600/80 w-10 h-10 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm active:scale-90 transition-all">
+                        <i class="fa-solid fa-camera-rotate text-base"></i>
+                    </button>
                     <div id="camera-loading" class="absolute z-30 flex flex-col items-center justify-center w-full h-full bg-slate-900/90">
                         <button onclick="mulaiSistem()" id="btn-start" class="bg-emerald-500 text-white px-8 py-4 rounded-xl font-extrabold shadow-lg shadow-emerald-500/30 mb-4 hover:scale-105 active:scale-95 transition-transform">
                             <i class="fa-solid fa-power-off mr-2"></i> NYALAKAN SISTEM
@@ -95,7 +103,7 @@
                 </div>
 
                 <!-- PANEL PENDAFTARAN WAJAH (Disembunyikan di Mode Absen, Muncul di Mode Daftar) -->
-                <div id="panel-pendaftaran" class="hidden mt-4 bg-slate-900 p-4 border border-blue-500/30 rounded-xl gap-3 items-center shadow-inner">
+                <div id="panel-pendaftaran" class="hidden mt-4 bg-slate-900 p-3 lg:p-4 border border-blue-500/30 rounded-xl flex-col sm:flex-row gap-3 items-stretch sm:items-center shadow-inner">
                     <div class="bg-blue-500 w-10 h-10 rounded-lg flex items-center justify-center shadow-md shrink-0">
                         <i class="fa-solid fa-qrcode text-white"></i>
                     </div>
@@ -120,7 +128,7 @@
                     <h2 class="font-bold text-slate-200 text-lg"><i class="fa-solid fa-list-check text-emerald-400 mr-2"></i> Log Kehadiran</h2>
                     <span class="bg-slate-700 text-slate-300 text-xs font-bold py-1 px-3 rounded-full" id="total-scan">0 Terpindai</span>
                 </div>
-                <div id="log-container" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
+                <div id="log-container" class="flex-1 overflow-y-auto space-y-3 pr-2 max-h-[45vh] lg:max-h-none"></div>
             </div>
         </section>
     </main>
@@ -144,6 +152,9 @@
         let enrollTargetId = "";
         let faceMatcher = null; 
         let globalDataWajah = [];
+    let activeFacingMode = "user";
+        let html5QrCodeInstance = null;
+        let faceInterval = null;
         const URL_GATEWAY_PUSAT = "https://script.google.com/macros/s/AKfycbzcHLMR_oS83RcSUucJ5PWEkD7MxIAkNf_vQ-tDOHaUeJ-AelGf0KmPZTCW9EGyEHxJ/exec";
 // 1. TANGKAP IDENTITAS RUANG KERJA DARI URL SMART TEACHER
      const urlParams = new URLSearchParams(window.location.search);
@@ -458,9 +469,9 @@
                 aiStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-brain"></i> AI Aktif & Siap</span>`;
                 await muatDaftarWajah(); 
                 
-                const html5QrCode = new Html5Qrcode("videoFeed");
-                await html5QrCode.start(
-                    { facingMode: "user" },
+                html5QrCodeInstance = new Html5Qrcode("videoFeed");
+                await html5QrCodeInstance.start(
+                    { facingMode: activeFacingMode },
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
                         if (!window.lastScanned || window.lastScanned !== decodedText) {
@@ -503,6 +514,7 @@
 
                 cameraLoading.style.display = 'none';
                 scanLine.classList.remove('hidden');
+                document.getElementById('btn-flip-cam').classList.remove('hidden');
 
                 const videoEl = document.querySelector('#videoFeed video');
                 if (videoEl) {
@@ -515,7 +527,7 @@
                         let bufferWajah = {}; 
                         let wajahTerkonfirmasiTerakhir = ""; 
                         
-                        setInterval(async () => {
+                        if (faceInterval) clearInterval(faceInterval); faceInterval = setInterval(async () => {
                             const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions())
                                 .withFaceLandmarks()
                                 .withFaceDescriptors();
@@ -634,6 +646,18 @@
                 suaraAI.volume = 1.0;
 
                 window.speechSynthesis.speak(suaraAI);
+            }
+        }
+    async function gantiKamera() {
+            if (!html5QrCodeInstance) return;
+            try {
+                if (faceInterval) clearInterval(faceInterval);
+                await html5QrCodeInstance.stop();
+                document.querySelectorAll('#videoFeed canvas').forEach(c => c.remove());
+                activeFacingMode = (activeFacingMode === "user") ? "environment" : "user";
+                await mulaiSistem();
+            } catch (e) {
+                alert("Gagal mengganti kamera: " + e);
             }
         }
     </script>
