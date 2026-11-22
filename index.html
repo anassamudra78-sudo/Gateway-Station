@@ -92,10 +92,10 @@
         <section class="flex-[3] flex flex-col gap-4">
             <div class="bg-slate-800 rounded-2xl border border-slate-700 p-4 flex-1 flex flex-col relative shadow-2xl">
                 <div class="flex justify-between items-center mb-4">
-                  <h2 class="font-bold text-slate-200 text-xs sm:text-base leading-snug pr-2 whitespace-nowrap min-w-0" id="teks-kamera-judul"><i class="fa-solid fa-user-plus text-blue-400 mr-1.5"></i><span class="sm:hidden">Pendaftaran Wajah</span><span class="hidden sm:inline">Mode Pendaftaran Wajah Baru</span></h2>
+                 <h2 class="font-bold text-slate-200 text-xs sm:text-base leading-snug pr-2 min-w-0" id="teks-kamera-judul"><i class="fa-solid fa-user-plus text-blue-400 mr-1.5"></i><span class="sm:hidden">Daftar Wajah Baru</span><span class="hidden sm:inline">Mode Pendaftaran Wajah Baru</span></h2>
                     
                     <!-- KOTAK INFO WAJAH (Disembunyikan di Mode Absen, Muncul di Mode Daftar) -->
-                   <button id="btn-info-wajah" onclick="bukaModalDaftarWajah()" class="hidden bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 text-xs font-bold py-2 px-4 rounded-full items-center gap-2 whitespace-nowrap shrink-0 shadow-sm transition-all cursor-pointer hover:scale-105">                        <i class="fa-solid fa-users-viewfinder"></i>
+                   <button id="btn-info-wajah" onclick="bukaModalDaftarWajah()" class="hidden bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 text-[10px] sm:text-xs font-bold py-1 px-2.5 sm:py-2 sm:px-4 rounded-full items-center gap-1 sm:gap-2 whitespace-nowrap shrink-0 shadow-sm transition-all cursor-pointer hover:scale-105">
                         <span id="info-wajah-terdaftar" class="whitespace-nowrap">0 Wajah Terdaftar</span>
                     </button>
                 </div>
@@ -222,7 +222,7 @@
             } else if (mode === 'daftar') {
                 btnDaftar.className = "mode-btn mode-active px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 !border-blue-500 !bg-blue-500/20 !text-blue-400 !shadow-[inset_0_0_10px_rgba(59,130,246,0.2)]";
                 btnAbsen.className = "mode-btn mode-inactive px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-700/50";
-                judulKamera.innerHTML = '<i class="fa-solid fa-user-plus text-blue-400 mr-2"></i> Mode Pendaftaran Wajah Baru';
+                judulKamera.innerHTML = '<i class="fa-solid fa-user-plus text-blue-400 mr-1.5"></i><span class="sm:hidden">Daftar Wajah Baru</span><span class="hidden sm:inline">Mode Pendaftaran Wajah Baru</span>';
                 teksJudul.innerText = "Universal Station (Mode Pendaftaran)";
                 teksJudul.className = "text-blue-400 font-semibold text-[11px] sm:text-xs tracking-wider leading-tight mt-0.5 uppercase";
                 
